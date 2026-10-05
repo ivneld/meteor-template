@@ -1,0 +1,22 @@
+diff --git a/a/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java b/b/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
+index 7404e68..b972243 100644
+--- a/a/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
++++ b/b/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
+@@ -3,6 +3,7 @@ package com.meteor.order.application;
+ import com.meteor.member.application.MemberFacade;
+ import com.meteor.order.domain.Order;
+ import com.meteor.order.storage.OrderRepository;
++import com.meteor.shared.OrderStatus;
+ import com.meteor.support.error.CoreException;
+ import com.meteor.support.error.ErrorCode;
+ 
+@@ -46,6 +47,9 @@ public class OrderUseCase {
+     @Transactional
+     public OrderResult cancel(Long orderId) {
+         Order order = load(orderId);
++        if (order.getStatus() == OrderStatus.PAID) {
++            throw new CoreException(ErrorCode.ORDER_NOT_CANCELLABLE).property("orderId", orderId);
++        }
+         order.cancel();
+         return OrderResult.from(orderRepository.save(order));
+     }

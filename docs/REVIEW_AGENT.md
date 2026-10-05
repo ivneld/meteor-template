@@ -1,8 +1,52 @@
 # 리뷰 에이전트 하네스
 
-코드 리뷰 에이전트가 [ARCHITECTURE.md](ARCHITECTURE.md) 의 의미 규칙(S-xx)을 PR 마다 확인하도록 하는 설정이다.
-구조 규칙(R-xx)은 ArchUnit 이 맡으므로 에이전트에게 다시 묻지 않는다. 도구에 독립적으로 썼으니 사용하는 에이전트의
-프롬프트·스킬 형식에 맞춰 옮긴다.
+코드리뷰를 요청하기 전에 팀원이 직접 돌리는 아키텍처 리뷰. [Pi](https://github.com/badlogic/pi-mono) 를 읽기 전용 에이전트로 실행해
+[ARCHITECTURE.md](ARCHITECTURE.md) 의 의미 규칙(S-xx)을 검사한다. 구조 규칙(R-xx)은 ArchUnit 이 맡는다.
+
+## 실행
+
+```bash
+npm i -g @mariozechner/pi-coding-agent   # 최초 1회. 이후 pi 를 한 번 실행해 /login 으로 모델 제공자 인증
+review/arch-review.sh                     # origin/main 과의 차이(커밋 + 작업 트리)를 검토
+review/arch-review.sh --base main         # 비교 기준 변경
+PI_REVIEW_MODEL=anthropic/claude-sonnet-4-5 review/arch-review.sh   # 모델 지정. 비우면 pi 기본 모델
+```
+
+| 종료 코드 | 의미 | 처리 |
+|---|---|---|
+| 0 | PASS. findings 없음 | 리뷰를 요청한다 |
+| 1 | BLOCK. S-04, S-05, S-06 위반 | 고치거나 ADR 로 예외를 기록한 뒤 다시 돌린다 |
+| 2 | WARN. 그 외 위반 또는 suspect | 판단해서 고치거나 리뷰 요청에 사유를 적는다 |
+| 3 | 실행 오류 (pi 없음, 인증 실패 등) | 메시지를 본다 |
+
+푸시 때마다 자동으로 돌리려면 `git config core.hooksPath .githooks` 로 훅을 켠다. BLOCK 만 푸시를 막고, `SKIP_ARCH_REVIEW=1 git push` 로 건너뛸 수 있다.
+대화형으로 Pi 를 쓰는 중이라면 `/skill:arch-review` 로 같은 절차를 부른다.
+
+## 하네스 구성
+
+```
+review/
+├── arch-review.sh        입력 수집(diff, ArchUnit 결과, 변경 파일) → pi 실행 → 출력 파싱 → 종료 코드
+├── eval.sh               골든 세트로 재현율·정밀도 측정
+├── prompts/
+│   ├── reviewer.md       시스템 프롬프트. 역할, 검사 범위(S-xx 만), 작업 방식, 출력 형식
+│   └── task.md           사용자 프롬프트. 첨부 파일의 읽는 순서
+└── golden/cases/<이름>/  diff.patch + expected.txt
+.agents/skills/arch-review/SKILL.md   대화형 Pi 용 스킬. 같은 프롬프트를 가리킨다
+.githooks/pre-push                    선택적 훅
+```
+
+`arch-review.sh` 가 pi 를 부르는 방식과 그 이유.
+
+| 옵션 | 이유 |
+|---|---|
+| `-p --no-session` | 비대화형, 세션을 남기지 않는다 |
+| `--tools read,grep,find,ls` | 읽기 전용. 리뷰어는 코드를 고치지 않는다 |
+| `-nc -ne -ns -np` | AGENTS.md, 확장, 스킬, 템플릿 자동 탐색을 끈다. 입력은 스크립트가 넘기는 것뿐이어야 결과가 재현된다 |
+| `--append-system-prompt review/prompts/reviewer.md` | 역할과 출력 형식 |
+| `@docs/ARCHITECTURE.md @docs/REVIEW_AGENT.md @archunit.txt @changed-files.txt @diff.patch` | 규칙 문서, 판단 가이드, ArchUnit 결과, 변경 목록, 변경 본문 |
+
+에이전트는 diff 만으로 판단이 안 되면 read/grep 으로 같은 컨텍스트의 파일을 직접 읽는다. 그래서 저장소 루트에서 실행해야 한다.
 
 ## 역할 분담
 
@@ -14,35 +58,19 @@
 
 ## 에이전트 입력
 
-1. PR diff 전체
-2. diff 가 건드린 패키지의 나머지 파일 (컨텍스트 파악용. 최소한 같은 애그리거트의 domain, application, storage)
-3. `docs/ARCHITECTURE.md` 전문
+1. 검토 대상 diff 전체 (`git merge-base origin/main HEAD` 기준, 작업 트리 포함)
+2. 변경 파일 목록
+3. `docs/ARCHITECTURE.md` 와 이 문서의 판단 가이드
 4. ArchUnit 실행 결과 (실패한 규칙 ID 목록). 실패가 있으면 그 맥락에서 의미 위반을 찾는다
+5. 같은 컨텍스트의 나머지 파일은 에이전트가 read/grep 으로 직접 읽는다. 스크립트가 미리 모아 주지 않는다
 
-## 프롬프트 골격
+## 프롬프트
 
-```
-당신은 이 저장소의 아키텍처 규칙 리뷰어다. docs/ARCHITECTURE.md 의 의미 규칙 S-01 ~ S-09 만 검사한다.
-R-xx 규칙은 ArchUnit 이 이미 검사했으므로 다루지 않는다.
+시스템 프롬프트는 `review/prompts/reviewer.md`, 요청 프롬프트는 `review/prompts/task.md` 가 단일 출처다. 여기에 복사해 두지 않는다.
+출력은 `findings:` 목록(rule, file, line, verdict, evidence, why, fix)과 마지막 줄 `result: PASS|WARN|BLOCK` 으로 고정되어 있고,
+`arch-review.sh` 와 `eval.sh` 가 그 형식을 파싱한다. 형식을 바꾸면 두 스크립트의 파서도 함께 바꾼다.
 
-각 규칙에 대해 diff 와 주변 코드를 읽고 위반이 있으면 아래 형식으로만 보고한다. 위반이 없는 규칙은 적지 않는다.
-확신이 낮으면 verdict 를 "suspect" 로 표시한다. 규칙에 없는 지적은 하지 않는다.
-
-출력 형식 (규칙 위반 하나당 하나):
-- rule: S-05
-  file: core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
-  line: 42
-  verdict: violation | suspect
-  evidence: |
-    private final PaymentRepository paymentRepository;   // 다른 컨텍스트의 Repository 주입
-  why: 주문 UseCase 가 결제 Repository 를 주입받아 한 트랜잭션에서 두 컨텍스트를 수정한다.
-       분리 시점에 이 트랜잭션은 사가가 되어야 한다.
-  fix: PaymentCompleted 이벤트를 발행하고 주문 컨텍스트가 AFTER_COMMIT 리스너로 받는다.
-
-위반이 하나도 없으면 "no findings" 만 출력한다.
-```
-
-`why` 에는 규칙의 이유를 ARCHITECTURE.md 의 표현으로 쓴다. 코멘트가 쌓이면 규칙이 팀의 언어가 된다.
+`why` 에는 규칙의 이유를 ARCHITECTURE.md 의 표현으로 쓰게 했다. 코멘트가 쌓이면 규칙이 팀의 언어가 된다.
 
 ## 규칙별 판단 가이드
 
@@ -69,12 +97,11 @@ R-xx 규칙은 ArchUnit 이 이미 검사했으므로 다루지 않는다.
 
 ## 골든 세트
 
-프롬프트를 바꿀 때마다 재현율과 정밀도를 재기 위한 고정 입력.
+프롬프트를 바꿀 때마다 재현율과 정밀도를 재기 위한 고정 입력. `review/golden/cases/<이름>/` 에 `diff.patch` 와 `expected.txt` 를 두고
+`review/eval.sh` 로 돌린다. 만드는 법은 [review/golden/README.md](../review/golden/README.md).
 
-1. `docs/review/golden/` 아래에 케이스별 디렉터리를 둔다. 각 케이스는 `diff.patch` 와 `expected.yaml`(기대 findings, 위 출력 형식).
-2. 규칙마다 위반 케이스 1개 이상, 위반처럼 보이지만 아닌 케이스 1개 이상. 처음엔 20개면 충분하다.
-3. 실제 PR 에서 에이전트가 놓치거나 오탐한 사례는 케이스로 추가한다. 골든 세트는 자란다.
-4. 측정은 규칙별 재현율·정밀도. 차단 규칙은 정밀도 우선, 권고 규칙은 재현율 우선.
+시작 케이스 다섯 개: S-01, S-05, S-07, S-09 위반 각 1개와 위반처럼 보이지만 아닌 입력 검증 1개.
+실제 PR 에서 에이전트가 놓치거나 오탐한 사례를 케이스로 추가한다. 측정은 규칙별 재현율·정밀도이며, 차단 규칙은 정밀도 우선, 권고 규칙은 재현율 우선.
 
 ## 운영
 

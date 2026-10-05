@@ -1,0 +1,13 @@
+diff --git a/a/core/core-api/src/main/java/com/meteor/shipping/application/ShippingUseCase.java b/b/core/core-api/src/main/java/com/meteor/shipping/application/ShippingUseCase.java
+index 364679b..a1dc54a 100644
+--- a/a/core/core-api/src/main/java/com/meteor/shipping/application/ShippingUseCase.java
++++ b/b/core/core-api/src/main/java/com/meteor/shipping/application/ShippingUseCase.java
+@@ -40,7 +40,7 @@ public class ShippingUseCase {
+     public ShippingResult ship(Long shippingId) {
+         Shipping shipping = load(shippingId);
+         shipping.ship();
+-        return ShippingResult.from(shippingRepository.save(shipping));
++        return ShippingResult.from(shipping);
+     }
+ 
+     @Transactional

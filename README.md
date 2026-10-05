@@ -91,6 +91,16 @@ curl -X POST localhost:8080/api/v1/shippings/1/ship
 ./gradlew format                     # 코드 포맷 적용
 ```
 
+## 코드리뷰 요청 전
+
+```bash
+npm i -g @mariozechner/pi-coding-agent   # 최초 1회, 이후 pi 실행 후 /login
+review/arch-review.sh                     # 아키텍처 규칙 리뷰. 0 PASS / 1 BLOCK / 2 WARN
+```
+
+ArchUnit 이 구조 규칙을, Pi 리뷰 에이전트가 의미 규칙을 본다. BLOCK 이면 고치거나 ADR 로 예외를 남긴 뒤 리뷰를 요청한다.
+푸시마다 자동으로 돌리려면 `git config core.hooksPath .githooks`. 자세한 내용은 [docs/REVIEW_AGENT.md](docs/REVIEW_AGENT.md).
+
 ## 의존성 버전 관리
 
 모든 버전은 `gradle.properties` 에서 관리한다. 새 라이브러리를 추가할 때는 버전을 `gradle.properties` 에 적고 `build.gradle` 에서 참조한다.
@@ -129,4 +139,4 @@ curl -X POST localhost:8080/api/v1/shippings/1/ship
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 코드를 어디에 둘지, 규칙을 어겨야 할 때, 새 컨텍스트를 만들 때, 경계가 맞는지 점검할 때 |
 | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | 에러 코드를 추가하거나 예외를 던질 때, 오류 응답 형식을 알아야 할 때 |
 | [docs/SCALING.md](docs/SCALING.md) | 트래픽·조직이 커져 구조를 바꿔야 하는지 판단할 때 |
-| [docs/REVIEW_AGENT.md](docs/REVIEW_AGENT.md) | 리뷰 에이전트를 설정하거나 규칙 검사 결과를 해석할 때 |
+| [docs/REVIEW_AGENT.md](docs/REVIEW_AGENT.md) | 코드리뷰 요청 전 `review/arch-review.sh` 를 돌릴 때, 결과를 해석할 때, 프롬프트를 바꿀 때 |
