@@ -2,18 +2,22 @@
 # 골든 세트로 리뷰 에이전트의 재현율·정밀도를 잰다. 프롬프트를 바꿀 때마다 실행한다.
 #
 #   review/eval.sh                # review/golden/cases/* 전부
-#   review/eval.sh s05-*          # 글로브로 일부만
+#   review/eval.sh 's05-*'        # 글로브로 일부만
+#
+# 모델과 토큰은 .env 에서 읽힌다 (.env.example). PI_BIN 으로 pi 실행 파일을 바꿀 수 있다
 set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PATTERN="${1:-*}"
+PI="${PI_BIN:-pi}"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 
 for case_dir in review/golden/cases/$PATTERN/; do
     name="$(basename "$case_dir")"
     [ -f "$case_dir/diff.patch" ] || continue
-    review/arch-review.sh --diff "$case_dir/diff.patch" --no-archunit --output "$OUT/$name.md" >/dev/null 2>&1 || true
+    "$PI" --approve -p --no-session "/arch-review --diff $case_dir/diff.patch --no-archunit" \
+        < /dev/null > "$OUT/$name.md" 2>/dev/null || true
     cp "$case_dir/expected.txt" "$OUT/$name.expected"
 done
 
@@ -41,8 +45,7 @@ for exp_path in sorted(glob.glob(out + '/*.expected')):
     rows.append((name, sorted(expected), sorted(found)))
 print('%-40s %-18s %s' % ('case', 'expected', 'found'))
 for name, e, f in rows:
-    mark = 'ok ' if e == f else 'XX '
-    print(mark + '%-37s %-18s %s' % (name, ','.join(e) or '-', ','.join(f) or '-'))
+    print(('ok ' if e == f else 'XX ') + '%-37s %-18s %s' % (name, ','.join(e) or '-', ','.join(f) or '-'))
 print()
 print('%-6s %4s %4s %4s %9s %6s' % ('rule', 'tp', 'fp', 'fn', 'precision', 'recall'))
 for r in sorted(set(tp) | set(fp) | set(fn)):
