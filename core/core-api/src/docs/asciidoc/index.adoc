@@ -1,0 +1,79 @@
+= Meteor API Docs
+:doctype: book
+:icons: font
+:source-highlighter: highlightjs
+:toc: left
+:toclevels: 3
+:sectlinks:
+:snippets: build/generated-snippets
+
+== 개요
+
+성공 응답은 리소스 표현을 그대로 내려준다.
+오류 응답은 RFC 9457 Problem Details(`application/problem+json`) 형식이며 `code` 확장 속성으로 에러 코드를 전달한다.
+
+== 오류 응답
+
+=== 에러 코드
+
+[cols="1,1,3"]
+|===
+| code | HTTP status | 설명
+
+| C001 | 400 | 요청이 올바르지 않음 (검증 실패 포함, `errors` 속성에 필드별 오류)
+| C002 | 404 | 리소스 없음
+| C003 | 405 | 허용되지 않은 메서드
+| C004 | 415 | 지원하지 않는 미디어 타입
+| C999 | 500 | 서버 내부 오류
+| S001 | 404 | 샘플 없음
+| S002 | 409 | 이미 비활성화된 샘플
+|===
+
+=== 검증 실패 예시
+==== Http Response
+include::{snippets}/sample-create-invalid/http-response.adoc[]
+==== Response Fields
+include::{snippets}/sample-create-invalid/response-fields.adoc[]
+
+== Sample API
+
+=== 샘플 조회
+==== Curl Request
+include::{snippets}/sample-get/curl-request.adoc[]
+==== Path Parameters
+include::{snippets}/sample-get/path-parameters.adoc[]
+==== Http Response
+include::{snippets}/sample-get/http-response.adoc[]
+==== Response Fields
+include::{snippets}/sample-get/response-fields.adoc[]
+
+==== 샘플이 없을 때
+include::{snippets}/sample-get-not-found/http-response.adoc[]
+include::{snippets}/sample-get-not-found/response-fields.adoc[]
+
+'''
+
+=== 샘플 생성
+==== Curl Request
+include::{snippets}/sample-create/curl-request.adoc[]
+==== Request Fields
+include::{snippets}/sample-create/request-fields.adoc[]
+==== Http Response
+include::{snippets}/sample-create/http-response.adoc[]
+==== Response Fields
+include::{snippets}/sample-create/response-fields.adoc[]
+
+'''
+
+=== 샘플 비활성화
+==== Curl Request
+include::{snippets}/sample-deactivate/curl-request.adoc[]
+==== Path Parameters
+include::{snippets}/sample-deactivate/path-parameters.adoc[]
+==== Http Response
+include::{snippets}/sample-deactivate/http-response.adoc[]
+==== Response Fields
+include::{snippets}/sample-deactivate/response-fields.adoc[]
+
+==== 이미 비활성화된 샘플일 때
+include::{snippets}/sample-deactivate-conflict/http-response.adoc[]

@@ -1,0 +1,4 @@
+// 애그리거트, 도메인 서비스, 리포지토리 포트. Spring 과 JPA 를 모른다 (R-01).
+dependencies {
+    api project(':core:core-shared')
+}

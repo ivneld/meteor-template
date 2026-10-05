@@ -1,0 +1,28 @@
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version "${springBootVersion}"
+        id 'io.spring.dependency-management' version "${springDependencyManagementVersion}"
+        id 'org.asciidoctor.jvm.convert' version "${asciidoctorConvertVersion}"
+        id 'io.spring.javaformat' version "${springJavaFormatVersion}"
+    }
+}
+
+rootProject.name = 'meteor-template'
+
+// core: 도메인과 그것을 노출하는 실행 모듈
+include 'core:core-shared'   // 모든 계층이 공유하는 어휘. enum, VO, ErrorCode. 의존성 없음
+include 'core:core-domain'   // 애그리거트, 도메인 서비스, 리포지토리 포트. Spring/JPA 를 모름
+include 'core:core-api'      // 유일한 실행 모듈. application(UseCase) + api(controller)
+
+// storage: 도메인 포트의 구현 (JPA 엔티티는 이 안에서만 존재)
+include 'storage:db-core'
+
+// clients: 외부 시스템 연동 어댑터
+include 'clients:client-example'
+
+// support: 공통 부가 기능
+include 'support:logging'
+include 'support:monitoring'
+
+// tests: 테스트 작성 편의
+include 'tests:api-docs'

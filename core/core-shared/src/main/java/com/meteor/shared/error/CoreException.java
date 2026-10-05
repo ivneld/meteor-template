@@ -1,0 +1,57 @@
+package com.meteor.shared.error;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * 도메인·애플리케이션·어댑터 어디서든 던질 수 있는 유일한 예외 타입. 무엇이 잘못됐는지, 어떤 HTTP 상태로 응답할지는 {@link ErrorCode} 가
+ * 결정한다.
+ *
+ * <pre>
+ * throw new CoreException(ErrorCode.SAMPLE_NOT_FOUND).property("sampleId", sampleId);
+ * throw new CoreException(ErrorCode.INVALID_REQUEST, "name must be shorter than 100 characters");
+ * </pre>
+ */
+public class CoreException extends RuntimeException {
+
+    private final ErrorCode errorCode;
+
+    private final String detail;
+
+    private final Map<String, Object> properties = new LinkedHashMap<>();
+
+    public CoreException(ErrorCode errorCode) {
+        this(errorCode, null);
+    }
+
+    /**
+     * @param detail 발생 건에 대한 부가 설명. 응답의 detail 로 그대로 내려간다. 없으면 null.
+     */
+    public CoreException(ErrorCode errorCode, String detail) {
+        super(detail != null ? detail : errorCode.getTitle());
+        this.errorCode = errorCode;
+        this.detail = detail;
+    }
+
+    /**
+     * 응답에 실릴 확장 속성을 추가한다. 응답 JSON 최상위에 그대로 노출되므로 민감 정보는 넣지 않는다.
+     */
+    public CoreException property(String name, Object value) {
+        this.properties.put(name, value);
+        return this;
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
+
+    public String getDetail() {
+        return detail;
+    }
+
+    public Map<String, Object> getProperties() {
+        return Collections.unmodifiableMap(properties);
+    }
+
+}

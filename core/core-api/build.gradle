@@ -1,0 +1,18 @@
+// 프로젝트에서 유일하게 실행 가능한 모듈. application(UseCase) 과 api(controller) 가 여기 있다.
+bootJar.enabled = true
+jar.enabled = false
+
+dependencies {
+    implementation project(':core:core-shared')
+    implementation project(':core:core-domain')
+    implementation project(':storage:db-core')
+    implementation project(':clients:client-example')
+    implementation project(':support:logging')
+    implementation project(':support:monitoring')
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    testImplementation project(':tests:api-docs')
+    testImplementation "com.tngtech.archunit:archunit-junit5:${property('archUnitVersion')}"
+}

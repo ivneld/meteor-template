@@ -1,0 +1,9 @@
+// 도메인 리포지토리 포트의 JPA 구현. 비즈니스 규칙과 트랜잭션 경계를 두지 않는다 (R-02, R-06).
+dependencies {
+    implementation project(':core:core-shared')
+    implementation project(':core:core-domain')
+
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.h2database:h2'
+}
