@@ -8,12 +8,12 @@ HTTP/1.1 404 Not Found
 Content-Type: application/problem+json
 
 {
-  "type": "urn:meteor:error:S001",
-  "title": "Sample not found.",
+  "type": "urn:meteor:error:O001",
+  "title": "Order not found.",
   "status": 404,
-  "instance": "/api/v1/samples/999",
-  "code": "S001",
-  "sampleId": 999
+  "instance": "/api/v1/orders/999",
+  "code": "O001",
+  "orderId": 999
 }
 ```
 
@@ -54,8 +54,11 @@ core-api     com.meteor.support.web
 
 | 접두어 | 영역 | 예 |
 |---|---|---|
-| `C` | 공통. 특정 컨텍스트에 속하지 않는 오류와 Spring MVC 표준 오류 | `C001` 400, `C002` 404, `C003` 405, `C004` 415, `C999` 500 |
-| `S` | 샘플 컨텍스트 | `S001` 샘플 없음 (404), `S002` 이미 비활성 (409) |
+| `C` | 공통. 특정 컨텍스트에 속하지 않는 오류, Spring MVC 표준 오류, VO 검증 실패 | `C001` 400, `C002` 404, `C003` 405, `C004` 415, `C999` 500 |
+| `M` | 회원 | `M001` 없음 (404), `M002` 이미 탈퇴 (409), `M003` 비활성 (409) |
+| `O` | 주문 | `O001` 없음 (404), `O002` 결제 불가 상태 (409), `O003` 취소 불가 상태 (409) |
+| `P` | 결제 | `P001` 없음 (404) |
+| `S` | 배송 | `S001` 없음 (404), `S002` 허용되지 않는 상태 전이 (409) |
 
 `C999` 는 처리되지 않은 모든 예외의 기본값이다. 공통 코드는 `ProblemDetails.fromStatus()` 가 참조하므로 삭제하거나 상태를 바꿀 때 함께 확인한다.
 
@@ -78,28 +81,28 @@ core-api     com.meteor.support.web
    - **로그 레벨**: 정상 흐름에서 생길 수 있는 클라이언트 오류는 `INFO`, 운영자가 알아야 하면 `WARN`, 조사가 필요하면 `ERROR`.
 3. **`ErrorCodeTest` 실행.** 코드 문자열 중복과 상태 범위를 검사한다.
 4. **문서 갱신.** `core/core-api/src/docs/asciidoc/index.adoc` 의 에러 코드 표에 한 줄 추가한다. 응답 모양을 보여줄 필요가
-   있으면 컨트롤러 REST Docs 테스트에 오류 케이스를 추가한다 (`SampleControllerTest.getSampleNotFound()` 참고).
+   있으면 컨트롤러 REST Docs 테스트에 오류 케이스를 추가한다 (`OrderControllerTest.getNotFound()` 참고).
 
 ## 사용하기
 
 **규칙 위반은 애그리거트가 던진다.** 상태 전이 규칙은 도메인에 있으므로 예외도 거기서 나온다.
 
 ```java
-// Sample (core-domain)
-public void deactivate() {
-    if (this.status == SampleStatus.INACTIVE) {
-        throw new CoreException(ErrorCode.SAMPLE_ALREADY_INACTIVE).property("sampleId", id);
+// Order (core-domain)
+public void cancel() {
+    if (status != OrderStatus.CREATED) {
+        throw new CoreException(ErrorCode.ORDER_NOT_CANCELLABLE).property("orderId", id).property("orderStatus", status);
     }
-    this.status = SampleStatus.INACTIVE;
+    status = OrderStatus.CANCELLED;
 }
 ```
 
 **없는 리소스는 UseCase 가 던진다.** 조회 결과가 없는 것은 도메인 규칙이 아니라 흐름의 문제다.
 
 ```java
-// SampleUseCase (core-api)
-Sample sample = sampleRepository.findById(sampleId)
-    .orElseThrow(() -> new CoreException(ErrorCode.SAMPLE_NOT_FOUND).property("sampleId", sampleId));
+// OrderUseCase (core-api)
+Order order = orderRepository.findById(orderId)
+    .orElseThrow(() -> new CoreException(ErrorCode.ORDER_NOT_FOUND).property("orderId", orderId));
 ```
 
 **발생 건의 정보를 붙인다.** 구조화된 값은 `property()` 로, 사람이 읽을 설명은 `detail` 로.
@@ -108,8 +111,12 @@ Sample sample = sampleRepository.findById(sampleId)
 throw new CoreException(ErrorCode.ORDER_ALREADY_PAID, "paidAt=" + order.getPaidAt());
 ```
 
-`property()` 로 넣은 값은 응답 JSON 최상위에 그대로 노출된다. 민감 정보나 내부 식별자는 넣지 않고, 이름이 ProblemDetail 표준 필드
-(`type`, `title`, `status`, `detail`, `instance`)와 겹치지 않게 한다.
+`property()` 로 넣은 값은 응답 JSON 최상위에 그대로 노출된다. 민감 정보나 내부 식별자는 넣지 않는다. ProblemDetail 표준 필드 이름
+(`type`, `title`, `status`, `detail`, `instance`)은 `CoreException.property()` 가 거부한다. 주문 상태를 싣고 싶으면 `status` 가 아니라
+`orderStatus` 처럼 쓴다.
+
+**값 검증 실패는 VO 가 던진다.** `core-shared` 의 VO 는 외부 의존이 없어 `IllegalArgumentException` 을 던지고, 어드바이스가 `C001` 과
+메시지로 응답한다. 요청 DTO 가 Command 로 바뀌는 시점에 `Email.of(...)` 가 실패하면 UseCase 에 들어가기 전에 400 이 나간다.
 
 **외부 연동 실패는 어댑터가 감싼다.** `clients` 어댑터가 Feign 예외를 받아 에러 코드로 바꾼다. 원인 예외는 로그에 남기고 응답에는 노출하지 않는다.
 

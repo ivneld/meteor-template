@@ -30,7 +30,7 @@ support/*       logging, monitoring
 
 ```
 com.meteor.<context>.domain        애그리거트, 도메인 서비스(*Policy)                            (core-domain)
-com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event               (core-api)
+com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event, *Listener    (core-api)
 com.meteor.<context>.api           *Controller, request/*, response/*                          (core-api)
 com.meteor.<context>.storage       *Repository(public), *Entity, *JpaRepository, *RepositoryAdapter (storage/db-core)
 com.meteor.<context>.clients       외부 연동 어댑터                                             (clients/*)
@@ -77,7 +77,7 @@ Spring Data JDBC 로 `storage` 모듈만 교체해도 된다. JPA 어노테이�
 | R-02 | `@Transactional` 은 `application` 에만 있다 (클래스·메서드 모두) | 트랜잭션 경계가 한 계층에만 있어야 "이 코드가 어느 트랜잭션 안인가"가 호출 스택 한 칸 위에서 결정된다 |
 | R-03 | `api` 는 `domain`, `storage`, `clients` 에 의존하지 않는다 | 컨트롤러가 애그리거트 메서드를 부르면 트랜잭션 밖에서 상태가 바뀌고 저장이 누락된다. enum·VO 는 `core-shared`, 에러 어휘는 `support.error` 에 있으므로 자연히 허용된다 |
 | R-04 | `*UseCase` 는 다른 `*UseCase` 를 호출하지 않는다 | 트랜잭션 경계가 중첩되지 않게 한다. 공통 흐름은 도메인 서비스나 `*Facade` 로 |
-| R-05 | `domain` 에 `*Service` 접미어 금지. `application` 의 클래스는 `*UseCase`, `*Command`, `*Result`, `*Facade`, `*Event` 중 하나 | "로직 있는 서비스"와 "트랜잭션만 묶는 서비스"가 공존하는 상황을 이름에서부터 막는다 |
+| R-05 | `domain` 에 `*Service` 접미어 금지. `application` 의 클래스는 `*UseCase`, `*Command`, `*Result`, `*Facade`, `*Event`, `*Listener` 중 하나 | "로직 있는 서비스"와 "트랜잭션만 묶는 서비스"가 공존하는 상황을 이름에서부터 막는다 |
 | R-06 | `storage`, `clients` 어댑터는 `application`, `api` 에 의존하지 않는다 | 어댑터는 저장·연동의 구현일 뿐이며 흐름을 알면 안 된다 |
 | R-07 | 컨텍스트끼리 직접 의존하지 않는다. 허용 통로는 상대 컨텍스트의 `*Facade` 와 `*Event` 뿐 | 컨텍스트 경계가 코드에 있어야 분리 시점에 경계를 찾지 않아도 된다 |
 | R-08 | JPA 엔티티는 `storage` 에만 있고 밖에서 참조하지 않는다 | 영속 모델이 API 계약이나 도메인이 되는 것을 막는다. 변환은 어댑터 안에서 끝나고, application 은 public `*Repository` 인터페이스만 본다 |
@@ -89,7 +89,7 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 
 | ID | 규칙 | 신호 |
 |---|---|---|
-| S-01 | UseCase 는 도메인 상태로 분기하지 않는다 | UseCase 안의 `if (sample.getStatus() == ...)`. 애그리거트 메서드로 내린다 |
+| S-01 | UseCase 는 도메인 상태로 분기하지 않는다 | UseCase 안의 `if (order.getStatus() == ...)`. 애그리거트 메서드로 내린다 |
 | S-02 | 애그리거트는 빈약하지 않다 | getter 만 있고 상태 변경이 밖에서 일어남. setter 존재 |
 | S-03 | 컨트롤러는 VO 를 생성·변환만 하고 연산하지 않는다 | 컨트롤러에서 `money.multiply(...)` 같은 계산 |
 | S-04 | 컨텍스트 간 참조는 ID 로만 한다 | 다른 컨텍스트의 애그리거트를 필드로 보유, JPA 연관관계 월경 |
@@ -108,6 +108,12 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 3. 분기마다 동결 목록과 ADR 을 리뷰해 만료된 것을 되돌린다.
 
 분리 가능성은 규칙이 아니라 예외의 개수로 결정된다. 예외 목록이 보여야 한다.
+
+### 값 타입의 검증 실패
+
+`core-shared` 는 외부 의존이 없으므로 VO 생성자의 검증 실패는 `IllegalArgumentException` 으로 던진다.
+`ApiControllerAdvice` 가 이를 `C001` 로 바꾼다. 도메인 규칙 위반은 `CoreException` 으로 던진다. 둘의 구분은 "값 자체가 성립하지 않는가"
+(`Money(-1)`) 와 "값은 맞지만 지금 상태에서 허용되지 않는가" (`order.cancel()` on PAID) 다.
 
 ## 컨텍스트 식별
 
@@ -154,7 +160,9 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 
 ## 새 컨텍스트 추가
 
-`sample` 컨텍스트가 레퍼런스다. 사람은 문서보다 옆 패키지를 복사하므로, 레퍼런스가 규칙을 어기지 않게 유지하는 것이 가장 강한 강제 수단이다.
+`member`, `order`, `payment`, `shipping` 네 컨텍스트가 레퍼런스다. 동기 질의는 `order → MemberFacade`, `payment → OrderFacade`,
+커밋 후 통지는 `PaymentCompletedEvent → OrderEventListener`, `OrderPaidEvent → ShippingEventListener` 를 본보기로 삼는다.
+사람은 문서보다 옆 패키지를 복사하므로, 레퍼런스가 규칙을 어기지 않게 유지하는 것이 가장 강한 강제 수단이다.
 
 경계를 어디에 그을지는 [컨텍스트 식별](#컨텍스트-식별) 절의 테스트로 정하고, 같은 절의 "잘못 나누었다는 신호"로 분기마다 점검한다.
 
@@ -164,8 +172,11 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
    `*Entity`(package-private), `*JpaRepository`(package-private), `*RepositoryAdapter`(package-private) 를 둔다. 테이블 이름은 컨텍스트 접두어.
 3. `core-api` 에 `com.meteor.<context>.application` 의 `*UseCase`, `*Command`, `*Result` 와 `com.meteor.<context>.api` 의
    컨트롤러·DTO 를 둔다.
-4. 다른 컨텍스트와 협력이 필요하면 상대 컨텍스트의 `application` 에 `*Facade` 인터페이스를 두거나, `*Event` 를 발행하고
-   `@TransactionalEventListener` 로 받는다. 직접 import 는 R-07 이 막는다.
+4. 다른 컨텍스트와 협력이 필요하면 두 통로 중 하나를 쓴다. 직접 import 는 R-07 이 막는다.
+   - 즉시 답이 필요한 질의: 상대 컨텍스트의 `application` 에 `*Facade` 를 둔다. 반환 타입은 `core-shared` 의 값이나 원시 타입으로 제한해
+     상대 모델이 새지 않게 한다.
+   - 후속 처리: `*Event` 를 발행하고 받는 쪽 `application` 에 `*Listener` 를 둔다. 리스너는 `@TransactionalEventListener`(커밋 후)로 받고,
+     호출하는 UseCase 메서드는 `REQUIRES_NEW` 로 새 트랜잭션을 연다. 발행 측 트랜잭션은 이미 끝났기 때문이다.
 5. `ErrorCode` 에 접두어를 추가한다.
 6. `./gradlew test` 로 R 규칙을 통과하는지 확인한다.
 

@@ -109,7 +109,9 @@ class ArchitectureRules {
         .haveSimpleNameEndingWith("Facade")
         .orShould()
         .haveSimpleNameEndingWith("Event")
-        .as("R-05 application 의 클래스는 *UseCase, *Command, *Result, *Facade, *Event 중 하나다");
+        .orShould()
+        .haveSimpleNameEndingWith("Listener")
+        .as("R-05 application 의 클래스는 *UseCase, *Command, *Result, *Facade, *Event, *Listener 중 하나다");
 
     @ArchTest
     static final ArchRule R06_adapters_do_not_depend_on_application_or_api = noClasses().that()

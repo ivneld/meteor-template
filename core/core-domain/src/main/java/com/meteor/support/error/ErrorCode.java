@@ -5,10 +5,12 @@ package com.meteor.support.error;
  *
  * <p>
  * 에러 하나는 <b>코드 문자열 + HTTP 상태 + 제목 + 로그 레벨</b>로 정의한다. 어떤 HTTP 상태로 응답할지는 예외를 던지는 쪽이 아니라 에러
- * 코드가 결정한다. ProblemDetail 로 바꾸는 일은 표현 계층(core-api 의 ProblemDetails)이 맡는다.
+ * 코드가 결정한다. 예외를 던지는 가장 아래 모듈이 core-domain 이므로 어휘도 여기에 둔다. ProblemDetail 로 바꾸는 일과 프레임워크
+ * 오류를 공통 코드에 대응시키는 일은 표현 계층(core-api 의 ProblemDetails)이 맡는다.
  *
  * <p>
- * 코드 문자열은 접두어로 영역을 구분한다. {@code C}: 공통, {@code S}: 샘플 컨텍스트. 컨텍스트가 늘어나면 접두어를 추가한다.
+ * 코드 문자열은 접두어로 컨텍스트를 구분한다. {@code C} 공통, {@code M} 회원, {@code O} 주문, {@code P} 결제,
+ * {@code S} 배송.
  */
 public enum ErrorCode {
 
@@ -19,9 +21,22 @@ public enum ErrorCode {
     UNSUPPORTED_MEDIA_TYPE("C004", 415, "Unsupported media type.", LogLevel.INFO),
     INTERNAL_ERROR("C999", 500, "An unexpected error has occurred.", LogLevel.ERROR),
 
-    // ----- 샘플 컨텍스트 (S) -----
-    SAMPLE_NOT_FOUND("S001", 404, "Sample not found.", LogLevel.INFO),
-    SAMPLE_ALREADY_INACTIVE("S002", 409, "Sample is already inactive.", LogLevel.INFO);
+    // ----- 회원 (M) -----
+    MEMBER_NOT_FOUND("M001", 404, "Member not found.", LogLevel.INFO),
+    MEMBER_ALREADY_WITHDRAWN("M002", 409, "Member has already withdrawn.", LogLevel.INFO),
+    MEMBER_NOT_ACTIVE("M003", 409, "Member is not active.", LogLevel.INFO),
+
+    // ----- 주문 (O) -----
+    ORDER_NOT_FOUND("O001", 404, "Order not found.", LogLevel.INFO),
+    ORDER_NOT_PAYABLE("O002", 409, "Order is not in a payable state.", LogLevel.INFO),
+    ORDER_NOT_CANCELLABLE("O003", 409, "Order can no longer be cancelled.", LogLevel.INFO),
+
+    // ----- 결제 (P) -----
+    PAYMENT_NOT_FOUND("P001", 404, "Payment not found.", LogLevel.INFO),
+
+    // ----- 배송 (S) -----
+    SHIPPING_NOT_FOUND("S001", 404, "Shipping not found.", LogLevel.INFO),
+    SHIPPING_INVALID_TRANSITION("S002", 409, "Shipping status transition is not allowed.", LogLevel.INFO);
 
     private final String code;
 

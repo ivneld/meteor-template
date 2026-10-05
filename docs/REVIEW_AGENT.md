@@ -56,7 +56,7 @@ R-xx 규칙은 ArchUnit 이 이미 검사했으므로 다루지 않는다.
 | S-04 | `domain` 클래스 필드 타입이 다른 컨텍스트의 애그리거트. `storage` 엔티티의 `@ManyToOne` 등이 다른 컨텍스트 엔티티 | ID 타입(VO) 보유는 허용 |
 | S-05 | `*UseCase` 생성자가 두 컨텍스트 이상의 `*Repository`/`*Facade` 를 주입 | 조회 전용 Facade 하나를 읽는 것은 권고 수준 |
 | S-06 | `@Query`, 네이티브 쿼리, JPQL 에 다른 컨텍스트 테이블·엔티티 등장 | 같은 컨텍스트 내부 JOIN 은 허용 |
-| S-07 | `@TransactionalEventListener` 의 phase 가 `BEFORE_COMMIT`, 또는 리스너가 반환값을 호출자에게 돌려줌 | `@EventListener` 동기 리스너는 같은 컨텍스트 내부라면 허용 |
+| S-07 | `@TransactionalEventListener` 의 phase 가 `BEFORE_COMMIT`, 리스너가 반환값을 호출자에게 돌려줌, 리스너가 부르는 UseCase 메서드에 `REQUIRES_NEW` 가 없음 | `@EventListener` 동기 리스너는 같은 컨텍스트 내부라면 허용 |
 | S-08 | `storage`/`clients` 클래스 안의 도메인 상태 분기, 계산 | null 처리와 타입 변환은 허용 |
 | S-09 | UseCase 가 애그리거트 메서드를 호출한 뒤 `save()` 없이 반환 | 읽기 전용 UseCase 는 대상 아님 |
 

@@ -2,7 +2,7 @@
 
 Spring Boot(Java) 서비스를 팀이 함께 개발하기 위한 멀티모듈 템플릿.
 
-- 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 코드는 컨텍스트(`sample`, `order` ...) 단위로 패키징된다.
+- 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 코드는 컨텍스트(`member`, `order`, `payment`, `shipping` ...) 단위로 패키징된다.
 - 컨텍스트 안은 `domain / application / api / storage` 네 계층. 도메인 규칙은 `core-domain` 에만, 트랜잭션 경계는 `application` 에만 있다.
 - 컨텍스트끼리는 `*Facade` 와 `*Event` 로만 협력한다. 이 경계들은 ArchUnit 테스트와 리뷰 에이전트가 강제한다.
 
@@ -41,6 +41,28 @@ meteor-template
 `core-domain` 은 아무것도 모른다. `storage` 는 도메인 객체를 주고받는 `*Repository` 를 소유·구현하므로 도메인에 의존한다.
 `core-api` 만 전부를 안다. 실행 모듈이 얇기 때문에 배치나 다른 API 모듈을 추가할 때 `core-domain` 과 `storage` 를 그대로 재사용한다.
 
+## 레퍼런스 도메인
+
+구조를 보여주기 위한 최소한의 이커머스 흐름. 네 컨텍스트가 `*Facade`(동기 질의)와 `*Event`(커밋 후 통지)로만 협력한다.
+
+```
+ member ◄──MemberFacade.ensureActive──── order ◄──OrderFacade.payableAmount──── payment
+                                           │ ▲                                     │
+                                           │ └────── PaymentCompletedEvent ◄────────┘
+                                           │
+                                           └──── OrderPaidEvent ────► shipping
+```
+
+| 컨텍스트 | 애그리거트 | 규칙 | 다른 컨텍스트와의 접점 |
+|---|---|---|---|
+| `member` | `Member` | 탈퇴는 한 번만 | `MemberFacade.ensureActive()` 를 공개 |
+| `order` | `Order` | 수량 1 이상, CREATED 일 때만 결제·취소 가능 | 회원을 `MemberFacade` 로 확인, `OrderFacade.payableAmount()` 공개, 결제 완료 이벤트를 받아 PAID, `OrderPaidEvent` 발행 |
+| `payment` | `Payment` | 승인 금액은 0 보다 커야 함 | 금액을 `OrderFacade` 에 묻고 `PaymentCompletedEvent` 발행 |
+| `shipping` | `Shipping` | READY → SHIPPED → DELIVERED | `OrderPaidEvent` 를 받아 배송 생성 |
+
+값 타입은 `core-shared` 에 있다. `Money`, `Email`, `Address` 와 상태 enum. 각 컨텍스트는 다른 컨텍스트를 ID(`memberId`, `orderId`)로만 안다.
+전체 흐름은 `core-api` 의 `OrderFlowTest` 가 검증한다.
+
 ## 핵심 규칙
 
 - `domain` 은 Spring, JPA, 다른 계층을 모른다.
@@ -53,10 +75,13 @@ meteor-template
 
 ```bash
 ./gradlew :core:core-api:bootRun
-curl localhost:8080/health
-curl -X POST localhost:8080/api/v1/samples -H 'Content-Type: application/json' -d '{"name":"meteor"}'
-curl localhost:8080/api/v1/samples/1
-curl -X POST localhost:8080/api/v1/samples/1/deactivate
+H='Content-Type: application/json'
+curl -X POST localhost:8080/api/v1/members  -H "$H" -d '{"email":"kim@example.com","name":"kim"}'
+curl -X POST localhost:8080/api/v1/orders   -H "$H" -d '{"memberId":1,"productName":"keyboard","quantity":2,"unitPrice":50000,"shippingAddress":{"city":"Seoul","street":"Teheran-ro 1","zipCode":"06000"}}'
+curl -X POST localhost:8080/api/v1/payments -H "$H" -d '{"orderId":1,"method":"CARD"}'
+curl localhost:8080/api/v1/orders/1                 # status: PAID (이벤트로 전이)
+curl 'localhost:8080/api/v1/shippings?orderId=1'    # status: READY (이벤트로 생성)
+curl -X POST localhost:8080/api/v1/shippings/1/ship
 ```
 
 ```bash

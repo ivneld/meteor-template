@@ -20,60 +20,62 @@
 |===
 | code | HTTP status | 설명
 
-| C001 | 400 | 요청이 올바르지 않음 (검증 실패 포함, `errors` 속성에 필드별 오류)
+| C001 | 400 | 요청이 올바르지 않음 (검증 실패, VO 생성 실패)
 | C002 | 404 | 리소스 없음
 | C003 | 405 | 허용되지 않은 메서드
 | C004 | 415 | 지원하지 않는 미디어 타입
 | C999 | 500 | 서버 내부 오류
-| S001 | 404 | 샘플 없음
-| S002 | 409 | 이미 비활성화된 샘플
+| M001 | 404 | 회원 없음
+| M002 | 409 | 이미 탈퇴한 회원
+| M003 | 409 | 활성 상태가 아닌 회원
+| O001 | 404 | 주문 없음
+| O002 | 409 | 결제할 수 없는 주문 상태
+| O003 | 409 | 취소할 수 없는 주문 상태
+| P001 | 404 | 결제 없음
+| S001 | 404 | 배송 없음
+| S002 | 409 | 허용되지 않는 배송 상태 전이
 |===
 
-=== 검증 실패 예시
-==== Http Response
-include::{snippets}/sample-create-invalid/http-response.adoc[]
-==== Response Fields
-include::{snippets}/sample-create-invalid/response-fields.adoc[]
+=== VO 검증 실패 예시
+include::{snippets}/member-register-invalid-email/http-response.adoc[]
+include::{snippets}/member-register-invalid-email/response-fields.adoc[]
 
-== Sample API
+== 회원 API
 
-=== 샘플 조회
-==== Curl Request
-include::{snippets}/sample-get/curl-request.adoc[]
-==== Path Parameters
-include::{snippets}/sample-get/path-parameters.adoc[]
-==== Http Response
-include::{snippets}/sample-get/http-response.adoc[]
-==== Response Fields
-include::{snippets}/sample-get/response-fields.adoc[]
+=== 회원 가입
+include::{snippets}/member-register/curl-request.adoc[]
+include::{snippets}/member-register/request-fields.adoc[]
+include::{snippets}/member-register/http-response.adoc[]
+include::{snippets}/member-register/response-fields.adoc[]
 
-==== 샘플이 없을 때
-include::{snippets}/sample-get-not-found/http-response.adoc[]
-include::{snippets}/sample-get-not-found/response-fields.adoc[]
+== 주문 API
 
-'''
+=== 주문 생성
+include::{snippets}/order-place/curl-request.adoc[]
+include::{snippets}/order-place/request-fields.adoc[]
+include::{snippets}/order-place/http-response.adoc[]
+include::{snippets}/order-place/response-fields.adoc[]
 
-=== 샘플 생성
-==== Curl Request
-include::{snippets}/sample-create/curl-request.adoc[]
-==== Request Fields
-include::{snippets}/sample-create/request-fields.adoc[]
-==== Http Response
-include::{snippets}/sample-create/http-response.adoc[]
-==== Response Fields
-include::{snippets}/sample-create/response-fields.adoc[]
+=== 주문이 없을 때
+include::{snippets}/order-get-not-found/http-response.adoc[]
+include::{snippets}/order-get-not-found/response-fields.adoc[]
 
-'''
+=== 취소할 수 없는 주문일 때
+include::{snippets}/order-cancel-conflict/http-response.adoc[]
+include::{snippets}/order-cancel-conflict/response-fields.adoc[]
 
-=== 샘플 비활성화
-==== Curl Request
-include::{snippets}/sample-deactivate/curl-request.adoc[]
-==== Path Parameters
-include::{snippets}/sample-deactivate/path-parameters.adoc[]
-==== Http Response
-include::{snippets}/sample-deactivate/http-response.adoc[]
-==== Response Fields
-include::{snippets}/sample-deactivate/response-fields.adoc[]
+== 결제 API
 
-==== 이미 비활성화된 샘플일 때
-include::{snippets}/sample-deactivate-conflict/http-response.adoc[]
+=== 결제
+include::{snippets}/payment-pay/curl-request.adoc[]
+include::{snippets}/payment-pay/request-fields.adoc[]
+include::{snippets}/payment-pay/http-response.adoc[]
+include::{snippets}/payment-pay/response-fields.adoc[]
+
+== 배송 API
+
+=== 출고
+include::{snippets}/shipping-ship/curl-request.adoc[]
+include::{snippets}/shipping-ship/path-parameters.adoc[]
+include::{snippets}/shipping-ship/http-response.adoc[]
+include::{snippets}/shipping-ship/response-fields.adoc[]
