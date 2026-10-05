@@ -1,4 +1,4 @@
-package com.meteor.shared.error;
+package com.meteor.support.error;
 
 /**
  * 서비스가 클라이언트에 돌려주는 모든 에러의 목록.
@@ -36,25 +36,6 @@ public enum ErrorCode {
         this.status = status;
         this.title = title;
         this.logLevel = logLevel;
-    }
-
-    /**
-     * 프레임워크가 직접 만들어 내는 표준 오류(404, 405, 415 ...)에 대응하는 공통 코드를 고른다.
-     */
-    public static ErrorCode fromStatus(int status) {
-        if (status == NOT_FOUND.status) {
-            return NOT_FOUND;
-        }
-        if (status == METHOD_NOT_ALLOWED.status) {
-            return METHOD_NOT_ALLOWED;
-        }
-        if (status == UNSUPPORTED_MEDIA_TYPE.status) {
-            return UNSUPPORTED_MEDIA_TYPE;
-        }
-        if (status >= 400 && status < 500) {
-            return INVALID_REQUEST;
-        }
-        return INTERNAL_ERROR;
     }
 
     public String getCode() {

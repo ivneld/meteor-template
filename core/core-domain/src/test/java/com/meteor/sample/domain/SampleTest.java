@@ -1,8 +1,8 @@
 package com.meteor.sample.domain;
 
 import com.meteor.shared.SampleStatus;
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

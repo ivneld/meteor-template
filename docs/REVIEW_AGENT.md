@@ -9,7 +9,7 @@
 | 수단 | 맡는 규칙 | 성격 |
 |---|---|---|
 | ArchUnit (`./gradlew test`) | R-01 ~ R-09 | 결정적. 전체 코드 그래프를 본다. 위반이면 머지 불가 |
-| 리뷰 에이전트 | S-01 ~ S-10 | 의미 판단. PR diff 와 주변 코드를 본다. 규칙별로 차단/권고를 정한다 |
+| 리뷰 에이전트 | S-01 ~ S-09 | 의미 판단. PR diff 와 주변 코드를 본다. 규칙별로 차단/권고를 정한다 |
 | 사람 | 설계 판단 | 경계가 맞는지, 규칙 자체를 바꿔야 하는지 |
 
 ## 에이전트 입력
@@ -22,7 +22,7 @@
 ## 프롬프트 골격
 
 ```
-당신은 이 저장소의 아키텍처 규칙 리뷰어다. docs/ARCHITECTURE.md 의 의미 규칙 S-01 ~ S-10 만 검사한다.
+당신은 이 저장소의 아키텍처 규칙 리뷰어다. docs/ARCHITECTURE.md 의 의미 규칙 S-01 ~ S-09 만 검사한다.
 R-xx 규칙은 ArchUnit 이 이미 검사했으므로 다루지 않는다.
 
 각 규칙에 대해 diff 와 주변 코드를 읽고 위반이 있으면 아래 형식으로만 보고한다. 위반이 없는 규칙은 적지 않는다.
@@ -34,8 +34,8 @@ R-xx 규칙은 ArchUnit 이 이미 검사했으므로 다루지 않는다.
   line: 42
   verdict: violation | suspect
   evidence: |
-    private final PaymentRepository paymentRepository;   // 다른 컨텍스트의 포트 주입
-  why: 주문 UseCase 가 결제 포트를 주입받아 한 트랜잭션에서 두 컨텍스트를 수정한다.
+    private final PaymentRepository paymentRepository;   // 다른 컨텍스트의 Repository 주입
+  why: 주문 UseCase 가 결제 Repository 를 주입받아 한 트랜잭션에서 두 컨텍스트를 수정한다.
        분리 시점에 이 트랜잭션은 사가가 되어야 한다.
   fix: PaymentCompleted 이벤트를 발행하고 주문 컨텍스트가 AFTER_COMMIT 리스너로 받는다.
 
@@ -57,9 +57,8 @@ R-xx 규칙은 ArchUnit 이 이미 검사했으므로 다루지 않는다.
 | S-05 | `*UseCase` 생성자가 두 컨텍스트 이상의 `*Repository`/`*Facade` 를 주입 | 조회 전용 Facade 하나를 읽는 것은 권고 수준 |
 | S-06 | `@Query`, 네이티브 쿼리, JPQL 에 다른 컨텍스트 테이블·엔티티 등장 | 같은 컨텍스트 내부 JOIN 은 허용 |
 | S-07 | `@TransactionalEventListener` 의 phase 가 `BEFORE_COMMIT`, 또는 리스너가 반환값을 호출자에게 돌려줌 | `@EventListener` 동기 리스너는 같은 컨텍스트 내부라면 허용 |
-| S-08 | `core-shared` 의 VO 에 비즈니스 상수나 조건 분기 | 형식 검증(이메일 패턴, 음수 금지)은 값 연산이므로 허용 |
-| S-09 | `storage`/`clients` 클래스 안의 도메인 상태 분기, 계산 | null 처리와 타입 변환은 허용 |
-| S-10 | UseCase 가 애그리거트 메서드를 호출한 뒤 `save()` 없이 반환 | 읽기 전용 UseCase 는 대상 아님 |
+| S-08 | `storage`/`clients` 클래스 안의 도메인 상태 분기, 계산 | null 처리와 타입 변환은 허용 |
+| S-09 | UseCase 가 애그리거트 메서드를 호출한 뒤 `save()` 없이 반환 | 읽기 전용 UseCase 는 대상 아님 |
 
 ## 차단 범위
 

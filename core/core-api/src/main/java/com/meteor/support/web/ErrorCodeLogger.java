@@ -1,6 +1,6 @@
 package com.meteor.support.web;
 
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.ErrorCode;
 import org.slf4j.Logger;
 
 /**

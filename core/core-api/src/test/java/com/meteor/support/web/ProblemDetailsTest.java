@@ -1,7 +1,7 @@
 package com.meteor.support.web;
 
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.ProblemDetail;
@@ -19,6 +19,15 @@ class ProblemDetailsTest {
         assertThat(problemDetail.getTitle()).isEqualTo("Sample not found.");
         assertThat(problemDetail.getDetail()).isEqualTo("sampleId=1");
         assertThat(problemDetail.getProperties()).containsEntry("code", "S001");
+    }
+
+    @Test
+    void fromStatusMapsFrameworkStatusesToCommonCodes() {
+        assertThat(ProblemDetails.fromStatus(404)).isEqualTo(ErrorCode.NOT_FOUND);
+        assertThat(ProblemDetails.fromStatus(405)).isEqualTo(ErrorCode.METHOD_NOT_ALLOWED);
+        assertThat(ProblemDetails.fromStatus(415)).isEqualTo(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(ProblemDetails.fromStatus(409)).isEqualTo(ErrorCode.INVALID_REQUEST);
+        assertThat(ProblemDetails.fromStatus(503)).isEqualTo(ErrorCode.INTERNAL_ERROR);
     }
 
     @Test

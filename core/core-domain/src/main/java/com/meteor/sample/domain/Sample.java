@@ -3,8 +3,8 @@ package com.meteor.sample.domain;
 import java.time.LocalDateTime;
 
 import com.meteor.shared.SampleStatus;
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 
 /**
  * 샘플 애그리거트. 식별자를 가진 가변 객체이며, 상태 전이 규칙은 모두 이 클래스의 메서드에 있다.

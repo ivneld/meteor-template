@@ -1,9 +1,9 @@
 package com.meteor.sample.application;
 
 import com.meteor.sample.domain.Sample;
-import com.meteor.sample.domain.SampleRepository;
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.sample.storage.SampleRepository;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

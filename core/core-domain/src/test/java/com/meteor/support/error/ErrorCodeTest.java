@@ -1,4 +1,4 @@
-package com.meteor.shared.error;
+package com.meteor.support.error;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -22,15 +22,6 @@ class ErrorCodeTest {
         for (ErrorCode errorCode : ErrorCode.values()) {
             assertThat(errorCode.getStatus()).as(errorCode.name()).isBetween(400, 599);
         }
-    }
-
-    @Test
-    void fromStatusMapsFrameworkStatusesToCommonCodes() {
-        assertThat(ErrorCode.fromStatus(404)).isEqualTo(ErrorCode.NOT_FOUND);
-        assertThat(ErrorCode.fromStatus(405)).isEqualTo(ErrorCode.METHOD_NOT_ALLOWED);
-        assertThat(ErrorCode.fromStatus(415)).isEqualTo(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
-        assertThat(ErrorCode.fromStatus(409)).isEqualTo(ErrorCode.INVALID_REQUEST);
-        assertThat(ErrorCode.fromStatus(503)).isEqualTo(ErrorCode.INTERNAL_ERROR);
     }
 
     @Test

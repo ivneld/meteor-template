@@ -5,8 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public class ApiControllerAdvice extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
             HttpStatusCode statusCode, WebRequest request) {
-        ErrorCode errorCode = ErrorCode.fromStatus(statusCode.value());
+        ErrorCode errorCode = ProblemDetails.fromStatus(statusCode.value());
         ErrorCodeLogger.log(log, errorCode, "Spring MVC exception: " + ex.getMessage(), null);
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
@@ -73,7 +73,7 @@ public class ApiControllerAdvice extends ResponseEntityExceptionHandler {
             WebRequest request) {
         // 부모가 만든 표준 ProblemDetail(404, 405, 415 ...)에도 에러 코드를 붙인다
         if (body instanceof ProblemDetail problemDetail && !ProblemDetails.hasCode(problemDetail)) {
-            ProblemDetails.apply(ErrorCode.fromStatus(statusCode.value()), problemDetail);
+            ProblemDetails.apply(ProblemDetails.fromStatus(statusCode.value()), problemDetail);
         }
         return super.createResponseEntity(body, headers, statusCode, request);
     }

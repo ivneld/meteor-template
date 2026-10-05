@@ -2,7 +2,7 @@ package com.meteor.sample.storage;
 
 import com.meteor.CoreDbContextTest;
 import com.meteor.sample.domain.Sample;
-import com.meteor.sample.domain.SampleRepository;
+import com.meteor.sample.storage.SampleRepository;
 import com.meteor.shared.SampleStatus;
 import org.junit.jupiter.api.Test;
 

@@ -28,7 +28,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *
  * <p>
  * 패키지 규약: {@code com.meteor.<context>.{domain|application|api|storage|clients}}.
- * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다.
+ * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다. 에러 어휘
+ * ({@code com.meteor.support.error}) 는 core-domain 모듈에 있지만 {@code ..domain..} 패키지가 아니므로
+ * api 도 참조할 수 있다.
  */
 @AnalyzeClasses(packages = "com.meteor", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureRules {
@@ -77,7 +79,7 @@ class ArchitectureRules {
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage(DOMAIN, STORAGE, CLIENTS)
-        .as("R-03 api 는 domain(애그리거트·포트), storage, clients 에 의존하지 않는다. 어휘는 core-shared 로");
+        .as("R-03 api 는 domain(애그리거트), storage, clients 에 의존하지 않는다. 값은 core-shared, 에러 어휘는 support.error 로");
 
     @ArchTest
     static final ArchRule R04_use_cases_do_not_call_each_other = classes().that()
@@ -142,15 +144,6 @@ class ArchitectureRules {
         .as("R-08 storage 밖의 클래스는 JPA 엔티티를 모른다");
 
     @ArchTest
-    static final ArchRule R08_repository_ports_are_interfaces_in_domain = classes().that()
-        .resideInAPackage(DOMAIN)
-        .and()
-        .haveSimpleNameEndingWith("Repository")
-        .should()
-        .beInterfaces()
-        .as("R-08 domain 의 *Repository 는 포트(인터페이스)이고 구현은 storage 에 있다");
-
-    @ArchTest
     static final ArchRule R09_shared_has_no_dependencies = noClasses().that()
         .resideInAPackage(SHARED)
         .should()
@@ -158,6 +151,17 @@ class ArchitectureRules {
             .or(resideInAPackage("org.springframework.."))
             .or(resideInAPackage("jakarta..")))
         .as("R-09 core-shared 는 다른 모듈과 프레임워크에 의존하지 않는다");
+
+    @ArchTest
+    static final ArchRule R09_shared_contains_only_records_and_enums = classes().that()
+        .resideInAPackage(SHARED)
+        .and()
+        .areTopLevelClasses()
+        .should()
+        .beRecords()
+        .orShould()
+        .beEnums()
+        .as("R-09 core-shared 에는 record 와 enum 만 둔다. 가변 객체와 예외는 core-domain 으로");
 
     /** 컨텍스트 = com.meteor 바로 아래 패키지. shared 와 support 는 컨텍스트가 아니므로 제외한다. */
     private static SliceAssignment contexts() {

@@ -3,14 +3,13 @@ package com.meteor.sample.storage;
 import java.util.Optional;
 
 import com.meteor.sample.domain.Sample;
-import com.meteor.sample.domain.SampleRepository;
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 
 import org.springframework.stereotype.Repository;
 
 /**
- * 도메인 포트 {@link SampleRepository} 의 JPA 구현. 조회·변환·저장을 캡슐화하고 도메인 객체만 주고받는다.
+ * {@link SampleRepository} 의 JPA 구현. 조회·변환·저장을 캡슐화하고 도메인 객체만 주고받는다.
  *
  * <p>
  * 더티 체킹에 기대지 않는다. UseCase 가 도메인 객체를 바꿨으면 {@link #save(Sample)} 를 명시적으로 호출해야 한다.

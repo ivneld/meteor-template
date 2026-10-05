@@ -2,8 +2,8 @@ package com.meteor.support.async;
 
 import java.lang.reflect.Method;
 
-import com.meteor.shared.error.CoreException;
-import com.meteor.shared.error.ErrorCode;
+import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 import com.meteor.support.web.ErrorCodeLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package com.meteor.shared.error;
+package com.meteor.support.error;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
