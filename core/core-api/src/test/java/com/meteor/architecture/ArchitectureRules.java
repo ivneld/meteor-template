@@ -2,6 +2,7 @@ package com.meteor.architecture;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -183,6 +184,15 @@ class ArchitectureRules {
         .beEnums()
         .as("R-09 shared 에는 record 와 enum 만 둔다. 한 컨텍스트만 쓰는 값은 그 컨텍스트의 domain 으로");
 
+    @ArchTest
+    static final ArchRule R10_facades_return_decisions_not_models = methods().that()
+        .areDeclaredInClassesThat()
+        .haveSimpleNameEndingWith("Facade")
+        .and()
+        .arePublic()
+        .should(returnOnlyDecisionTypes())
+        .as("R-10 Facade 는 판단 결과만 돌려준다. 반환 타입은 void, 원시 타입, java.lang, shared 의 값뿐이다");
+
     /** 컨텍스트 = com.meteor 바로 아래 패키지. shared 와 support 는 컨텍스트가 아니므로 제외한다. */
     private static SliceAssignment contexts() {
         return new SliceAssignment() {
@@ -208,6 +218,21 @@ class ArchitectureRules {
     private static DescribedPredicate<JavaClass> domainClassesWithBehavior() {
         return resideInAPackage(DOMAIN).and(DescribedPredicate.describe("not an enum or record",
                 javaClass -> !javaClass.isEnum() && !javaClass.isRecord()));
+    }
+
+    private static ArchCondition<JavaMethod> returnOnlyDecisionTypes() {
+        return new ArchCondition<>("return void, a primitive, a java.lang type or a shared value") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                JavaClass type = method.getRawReturnType();
+                boolean allowed = type.isPrimitive() || type.getPackageName().equals("java.lang")
+                        || type.getPackageName().startsWith("com.meteor.shared");
+                if (!allowed) {
+                    events.add(SimpleConditionEvent.violated(method,
+                            method.getFullName() + " returns " + type.getName() + " (a model, not a decision)"));
+                }
+            }
+        };
     }
 
     private static ArchCondition<JavaClass> notDependOnOtherClassesNamed(String suffix) {
