@@ -1,4 +1,4 @@
-package com.meteor.shared;
+package com.meteor.shipping.domain;
 
 public enum ShippingStatus {
 

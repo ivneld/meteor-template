@@ -93,12 +93,11 @@ class ArchitectureRules {
         .as("R-02 @Transactional 메서드는 application 에만 있다");
 
     @ArchTest
-    static final ArchRule R03_api_does_not_depend_on_domain_or_storage = noClasses().that()
+    static final ArchRule R03_api_does_not_depend_on_aggregates_or_storage = noClasses().that()
         .resideInAPackage(API)
         .should()
-        .dependOnClassesThat()
-        .resideInAnyPackage(DOMAIN, STORAGE, CLIENTS)
-        .as("R-03 api 는 domain(애그리거트), storage, clients 에 의존하지 않는다. 값은 shared, 에러 어휘는 support.error 로");
+        .dependOnClassesThat(domainClassesWithBehavior().or(resideInAPackage(STORAGE)).or(resideInAPackage(CLIENTS)))
+        .as("R-03 api 는 애그리거트·Policy, storage, clients 에 의존하지 않는다. 같은 컨텍스트 domain 의 enum·record 는 허용");
 
     @ArchTest
     static final ArchRule R04_use_cases_do_not_call_each_other = classes().that()
@@ -182,7 +181,7 @@ class ArchitectureRules {
         .beRecords()
         .orShould()
         .beEnums()
-        .as("R-09 shared 에는 record 와 enum 만 둔다. 가변 객체와 예외는 domain 이나 support.error 로");
+        .as("R-09 shared 에는 record 와 enum 만 둔다. 한 컨텍스트만 쓰는 값은 그 컨텍스트의 domain 으로");
 
     /** 컨텍스트 = com.meteor 바로 아래 패키지. shared 와 support 는 컨텍스트가 아니므로 제외한다. */
     private static SliceAssignment contexts() {
@@ -203,6 +202,12 @@ class ArchitectureRules {
                 return "contexts (com.meteor.<context>)";
             }
         };
+    }
+
+    /** 상태나 행위를 가진 domain 클래스(애그리거트, Policy). enum 과 record 는 값이므로 제외한다. */
+    private static DescribedPredicate<JavaClass> domainClassesWithBehavior() {
+        return resideInAPackage(DOMAIN).and(DescribedPredicate.describe("not an enum or record",
+                javaClass -> !javaClass.isEnum() && !javaClass.isRecord()));
     }
 
     private static ArchCondition<JavaClass> notDependOnOtherClassesNamed(String suffix) {

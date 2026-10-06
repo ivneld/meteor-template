@@ -1,4 +1,4 @@
-package com.meteor.shared;
+package com.meteor.member.domain;
 
 import java.util.regex.Pattern;
 

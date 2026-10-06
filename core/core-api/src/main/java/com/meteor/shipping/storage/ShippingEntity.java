@@ -1,8 +1,8 @@
 package com.meteor.shipping.storage;
 
 import com.meteor.shared.Address;
-import com.meteor.shared.ShippingStatus;
 import com.meteor.shipping.domain.Shipping;
+import com.meteor.shipping.domain.ShippingStatus;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

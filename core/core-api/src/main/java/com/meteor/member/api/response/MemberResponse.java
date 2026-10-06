@@ -1,7 +1,7 @@
 package com.meteor.member.api.response;
 
 import com.meteor.member.application.MemberResult;
-import com.meteor.shared.MemberStatus;
+import com.meteor.member.domain.MemberStatus;
 
 public record MemberResponse(Long id, String email, String name, MemberStatus status) {
 

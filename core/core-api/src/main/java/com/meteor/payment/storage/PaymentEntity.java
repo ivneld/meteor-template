@@ -1,8 +1,8 @@
 package com.meteor.payment.storage;
 
 import com.meteor.payment.domain.Payment;
+import com.meteor.payment.domain.PaymentMethod;
 import com.meteor.shared.Money;
-import com.meteor.shared.PaymentMethod;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

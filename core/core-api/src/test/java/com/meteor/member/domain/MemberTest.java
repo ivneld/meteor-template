@@ -1,7 +1,5 @@
 package com.meteor.member.domain;
 
-import com.meteor.shared.Email;
-import com.meteor.shared.MemberStatus;
 import com.meteor.support.error.CoreException;
 import org.junit.jupiter.api.Test;
 

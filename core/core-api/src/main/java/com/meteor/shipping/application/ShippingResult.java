@@ -1,8 +1,8 @@
 package com.meteor.shipping.application;
 
 import com.meteor.shared.Address;
-import com.meteor.shared.ShippingStatus;
 import com.meteor.shipping.domain.Shipping;
+import com.meteor.shipping.domain.ShippingStatus;
 
 public record ShippingResult(Long id, Long orderId, Address address, ShippingStatus status) {
 

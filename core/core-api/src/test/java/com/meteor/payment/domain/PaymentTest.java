@@ -1,7 +1,6 @@
 package com.meteor.payment.domain;
 
 import com.meteor.shared.Money;
-import com.meteor.shared.PaymentMethod;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

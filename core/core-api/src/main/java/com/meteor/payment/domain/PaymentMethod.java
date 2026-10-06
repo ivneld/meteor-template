@@ -1,4 +1,4 @@
-package com.meteor.shared;
+package com.meteor.payment.domain;
 
 public enum PaymentMethod {
 

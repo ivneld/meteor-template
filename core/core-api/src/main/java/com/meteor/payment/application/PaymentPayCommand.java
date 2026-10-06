@@ -1,6 +1,6 @@
 package com.meteor.payment.application;
 
-import com.meteor.shared.PaymentMethod;
+import com.meteor.payment.domain.PaymentMethod;
 
 public record PaymentPayCommand(Long orderId, PaymentMethod method) {
 }
