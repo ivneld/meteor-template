@@ -43,6 +43,13 @@ public class Member {
         return status == MemberStatus.ACTIVE;
     }
 
+    /** 다른 컨텍스트가 "이 회원으로 무언가를 해도 되는가"를 물을 때. 판단은 회원이 하고 거절은 예외로 알린다. */
+    public void ensureActive() {
+        if (!isActive()) {
+            throw new CoreException(ErrorCode.MEMBER_NOT_ACTIVE).property("memberId", id);
+        }
+    }
+
     public boolean isNew() {
         return id == null;
     }

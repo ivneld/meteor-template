@@ -1,6 +1,7 @@
 package com.meteor.member.domain;
 
 import com.meteor.support.error.CoreException;
+import com.meteor.support.error.ErrorCode;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +24,15 @@ class MemberTest {
 
         assertThat(member.isActive()).isFalse();
         assertThatThrownBy(member::withdraw).isInstanceOf(CoreException.class);
+    }
+
+    @Test
+    void withdrawnMemberFailsActiveCheck() {
+        Member member = Member.restore(1L, Email.of("a@b.com"), "kim", MemberStatus.WITHDRAWN);
+
+        assertThatThrownBy(member::ensureActive).isInstanceOf(CoreException.class)
+            .extracting(e -> ((CoreException) e).getErrorCode())
+            .isEqualTo(ErrorCode.MEMBER_NOT_ACTIVE);
     }
 
 }
