@@ -5,8 +5,8 @@ package com.meteor.support.error;
  *
  * <p>
  * 에러 하나는 <b>코드 문자열 + HTTP 상태 + 제목 + 로그 레벨</b>로 정의한다. 어떤 HTTP 상태로 응답할지는 예외를 던지는 쪽이 아니라 에러
- * 코드가 결정한다. 예외를 던지는 가장 아래 모듈이 core-domain 이므로 어휘도 여기에 둔다. ProblemDetail 로 바꾸는 일과 프레임워크
- * 오류를 공통 코드에 대응시키는 일은 표현 계층(core-api 의 ProblemDetails)이 맡는다.
+ * 코드가 결정한다. 예외를 던지는 가장 안쪽 계층이 domain 이므로 어휘는 프레임워크를 모르는 이 패키지에 둔다(R-01). ProblemDetail 로
+ * 바꾸는 일과 프레임워크 오류를 공통 코드에 대응시키는 일은 표현 계층(core-api 의 ProblemDetails)이 맡는다.
  *
  * <p>
  * 코드 문자열은 접두어로 컨텍스트를 구분한다. {@code C} 공통, {@code M} 회원, {@code O} 주문, {@code P} 결제,

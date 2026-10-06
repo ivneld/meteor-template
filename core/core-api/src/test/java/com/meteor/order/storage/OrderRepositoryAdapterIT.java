@@ -1,6 +1,6 @@
 package com.meteor.order.storage;
 
-import com.meteor.CoreDbContextTest;
+import com.meteor.ContextTest;
 import com.meteor.order.domain.Order;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OrderRepositoryAdapterIT extends CoreDbContextTest {
+class OrderRepositoryAdapterIT extends ContextTest {
 
     private final OrderRepository orderRepository;
 

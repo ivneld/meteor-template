@@ -1,9 +1,7 @@
-// Repository 인터페이스와 그 JPA 구현. 비즈니스 규칙과 트랜잭션 경계를 두지 않는다 (R-02, R-06).
-// Repository 가 도메인 객체를 주고받으므로 core-domain 은 api 로 노출한다.
+// 저장소 인프라. DataSource, JPA 설정, 모든 엔티티가 상속하는 BaseEntity 만 둔다.
+// 엔티티와 Repository 어댑터는 컨텍스트에 속하므로 core-api 의 com.meteor.<context>.storage 에 있다.
+// 저장소가 늘어나면(db-log, redis ...) 같은 모양의 모듈을 추가한다.
 dependencies {
-    implementation project(':core:core-shared')
-    api project(':core:core-domain')
-
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'com.h2database:h2'

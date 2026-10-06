@@ -28,9 +28,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *
  * <p>
  * 패키지 규약: {@code com.meteor.<context>.{domain|application|api|storage|clients}}.
- * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다. 에러 어휘
- * ({@code com.meteor.support.error}) 는 core-domain 모듈에 있지만 {@code ..domain..} 패키지가 아니므로
- * api 도 참조할 수 있다.
+ * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다.
+ *
+ * <p>
+ * 컨텍스트의 네 계층은 모두 core-api 모듈 안에 있다. 계층 사이 경계는 Gradle 모듈이 아니라 이 규칙들이 강제한다. 특히 domain 이
+ * Spring·JPA 를 모른다는 것(R-01)은 컴파일러가 아니라 여기서 잡힌다.
  */
 @AnalyzeClasses(packages = "com.meteor", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureRules {
@@ -49,6 +51,8 @@ class ArchitectureRules {
 
     private static final String SUPPORT = "com.meteor.support..";
 
+    private static final String ERROR = "com.meteor.support.error..";
+
     @ArchTest
     static final ArchRule R01_domain_knows_nothing_about_framework_or_outer_layers = noClasses().that()
         .resideInAPackage(DOMAIN)
@@ -56,6 +60,21 @@ class ArchitectureRules {
         .dependOnClassesThat()
         .resideInAnyPackage("org.springframework..", "jakarta.persistence..", APPLICATION, API, STORAGE, CLIENTS)
         .as("R-01 domain 은 Spring, JPA, application, api, storage, clients 를 모른다");
+
+    @ArchTest
+    static final ArchRule R01_domain_uses_only_error_vocabulary_from_support = noClasses().that()
+        .resideInAPackage(DOMAIN)
+        .should()
+        .dependOnClassesThat(resideInAPackage(SUPPORT).and(DescribedPredicate.not(resideInAPackage(ERROR))))
+        .as("R-01 domain 이 support 에서 쓰는 것은 에러 어휘(support.error)뿐이다");
+
+    @ArchTest
+    static final ArchRule R01_error_vocabulary_knows_no_framework = noClasses().that()
+        .resideInAPackage(ERROR)
+        .should()
+        .dependOnClassesThat(resideInAPackage("org.springframework..").or(resideInAPackage("jakarta.."))
+            .or(resideInAPackage("com.meteor..").and(DescribedPredicate.not(resideInAPackage(ERROR)))))
+        .as("R-01 에러 어휘(support.error)는 domain 이 던지므로 프레임워크와 다른 패키지를 모른다");
 
     @ArchTest
     static final ArchRule R02_transactional_classes_only_in_application = classes().that()
@@ -79,7 +98,7 @@ class ArchitectureRules {
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage(DOMAIN, STORAGE, CLIENTS)
-        .as("R-03 api 는 domain(애그리거트), storage, clients 에 의존하지 않는다. 값은 core-shared, 에러 어휘는 support.error 로");
+        .as("R-03 api 는 domain(애그리거트), storage, clients 에 의존하지 않는다. 값은 shared, 에러 어휘는 support.error 로");
 
     @ArchTest
     static final ArchRule R04_use_cases_do_not_call_each_other = classes().that()
@@ -152,7 +171,7 @@ class ArchitectureRules {
         .dependOnClassesThat(resideInAPackage("com.meteor..").and(DescribedPredicate.not(resideInAPackage(SHARED)))
             .or(resideInAPackage("org.springframework.."))
             .or(resideInAPackage("jakarta..")))
-        .as("R-09 core-shared 는 다른 모듈과 프레임워크에 의존하지 않는다");
+        .as("R-09 shared 는 다른 패키지와 프레임워크에 의존하지 않는다");
 
     @ArchTest
     static final ArchRule R09_shared_contains_only_records_and_enums = classes().that()
@@ -163,7 +182,7 @@ class ArchitectureRules {
         .beRecords()
         .orShould()
         .beEnums()
-        .as("R-09 core-shared 에는 record 와 enum 만 둔다. 가변 객체와 예외는 core-domain 으로");
+        .as("R-09 shared 에는 record 와 enum 만 둔다. 가변 객체와 예외는 domain 이나 support.error 로");
 
     /** 컨텍스트 = com.meteor 바로 아래 패키지. shared 와 support 는 컨텍스트가 아니므로 제외한다. */
     private static SliceAssignment contexts() {
