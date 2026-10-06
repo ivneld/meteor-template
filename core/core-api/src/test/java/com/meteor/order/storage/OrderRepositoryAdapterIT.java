@@ -40,4 +40,16 @@ class OrderRepositoryAdapterIT extends ContextTest {
         assertThat(orderRepository.findById(saved.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.PAID);
     }
 
+    @Test
+    void countsOrdersByMemberAndStatus() {
+        Address address = new Address("Seoul", "Teheran-ro 1", "06000");
+        Order paid = orderRepository.save(Order.place(77L, "keyboard", 1, Money.of(1), address));
+        paid.markPaid();
+        orderRepository.save(paid);
+        orderRepository.save(Order.place(77L, "mouse", 1, Money.of(1), address));
+
+        assertThat(orderRepository.countByMemberIdAndStatus(77L, OrderStatus.CREATED)).isEqualTo(1);
+        assertThat(orderRepository.countByMemberIdAndStatus(77L, OrderStatus.PAID)).isEqualTo(1);
+    }
+
 }
