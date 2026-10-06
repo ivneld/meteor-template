@@ -1,5 +1,5 @@
 diff --git a/a/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java b/b/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
-index 7404e68..581e777 100644
+index 3ee998c..8589960 100644
 --- a/a/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
 +++ b/b/core/core-api/src/main/java/com/meteor/order/application/OrderUseCase.java
 @@ -32,6 +32,9 @@ public class OrderUseCase {
@@ -10,5 +10,5 @@ index 7404e68..581e777 100644
 +            throw new CoreException(ErrorCode.INVALID_REQUEST, "productName is required");
 +        }
          memberFacade.ensureActive(command.memberId());
-         Order order = Order.place(command.memberId(), command.productName(), command.quantity(), command.unitPrice(),
-                 command.shippingAddress());
+         OrderLimitPolicy.ensureCanPlace(command.memberId(),
+                 orderRepository.countByMemberIdAndStatus(command.memberId(), OrderLimitPolicy.COUNTED_STATUS));
