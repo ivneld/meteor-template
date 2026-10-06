@@ -7,37 +7,81 @@
 - `R-xx` 구조 규칙. 결정적이며 ArchUnit 이 CI 에서 차단한다.
 - `S-xx` 의미 규칙. 코드 구조만으로 판단할 수 없어 리뷰 에이전트와 사람이 본다.
 
+## 설계 원칙
+
+규칙은 모두 아래 네 원칙에서 나온다. 규칙이 상황에 맞지 않을 때는 원칙으로 돌아가 판단한다.
+
+### 1. 목표는 규칙의 응집과 경계다. 서비스 분리는 목표가 아니다
+
+이 템플릿이 지키려는 것은 두 가지다.
+
+- **응집**: 도메인 규칙("CREATED 일 때만 결제할 수 있다")은 애그리거트 한 곳에만 있다. 바꿀 때 고칠 곳이 하나다.
+- **경계**: 컨텍스트끼리는 ID 와 정해진 통로(`*Facade`, `*Event`)로만 만난다. 도메인끼리 얽히지 않는다.
+
+서비스를 분리하기 위해서가 아니다. 트래픽 증가는 대부분 수평 확장으로 해결되고, 이미 만든 기능을 떼어내는 일은 드물다. 실제로 자주
+일어나는 일은 **새 기능을 별도 애플리케이션으로 만들어 이 애플리케이션과 연동하는 것**이다. 그때 비용이 터지는 곳은 두 군데다.
+새 애플리케이션이 이 애플리케이션의 테이블을 직접 읽기 시작하는 것(스키마가 영원히 고정된다), 그리고 흩어진 규칙을 새 애플리케이션이
+다시 구현하는 것(두 앱의 규칙이 따로 바뀐다). 응집과 경계가 있으면 `*Facade` 를 API 로 열기만 하면 된다. 분리 가능성은 이 둘을
+지킨 결과로 따라온다.
+
+### 2. 지금도 이득을 주는 대비만 한다
+
+미래를 위한 장치는 매일 복잡도라는 이자를 낸다. 오늘 유지보수에 이득이 없는 대비는 하지 않는다.
+
+| 하는 것 (지금도 이득) | 필요해질 때 하는 것 |
+|---|---|
+| 애그리거트에 규칙 응집, `*Policy` | 컨텍스트마다 트랜잭션을 강제로 나누기 |
+| 컨텍스트 경계 (ID 참조, Facade/Event 통로) | Outbox, 이벤트 저장소, 메시지 브로커 |
+| 테이블 쓰기 소유권 | 컨텍스트별 DB·스키마 분리 |
+| 판단을 돌려주는 Facade | 서비스 간 HTTP, 사가, 분산 추적 |
+
+### 3. 경계에서는 엄격하게, 경계 안에서는 실용적으로
+
+분리·연동 비용은 컨텍스트 사이의 경계에서만 생기고, 개발 속도를 깎는 의식은 대부분 경계 안쪽에 있다. 그래서 경계 규칙(R-07, R-10,
+S-04, S-06 쓰기)은 차단하고, 경계 안쪽은 필요한 만큼만 강제한다. 함께 바뀌어야 하는 컨텍스트 간 처리는 같은 트랜잭션으로 묶는다(S-05).
+
+### 4. 규칙이 있는 곳에만 풍부한 모델을 쓴다
+
+상태 전이, 계산, 정책처럼 "~일 때만 ~할 수 있다"는 문장이 있는 곳은 애그리거트와 `*Policy` 로 모델링한다. 설정, 코드 관리처럼 규칙이
+없는 기능에 애그리거트를 강제하지 않는다(S-02).
+
 ## 계층과 모듈
 
 ```
-core-shared     값 타입. record(VO) 와 enum 만. 외부 의존 0
-core-domain     애그리거트, 도메인 서비스(*Policy 등), 에러 어휘(ErrorCode, CoreException). Spring/JPA 를 모름
-core-api        application(UseCase, Command, Result) + api(Controller, Request/Response) + support(설정, 어드바이스)
-storage/*       Repository 인터페이스와 JPA 구현. 엔티티는 이 안에서만 존재
+core-api        유일한 실행 모듈. 컨텍스트마다 domain / application / api / storage 네 패키지가 이 안에 있다
+                shared(컨텍스트 간 계약 값), support.error(에러 어휘), support.web 등 공통 영역도 여기 있다
+storage/db-core 저장소 인프라. DataSource, JPA 설정, BaseEntity. 엔티티와 어댑터는 두지 않는다
 clients/*       외부 시스템 어댑터
 support/*       logging, monitoring
 ```
 
 ```
-        api ──► application ──► domain ◄── storage / clients
-         │           │            ▲              │
-         └───────────┴────────────┴──────────────┴──► core-shared
+        api ──► application ──► domain ◄── storage
+         │           │            │           │
+         └───────────┴────────────┴───────────┴──► shared, support.error
 ```
+
+컨텍스트 하나는 `core-api` 안의 폴더 하나(`com.meteor.<context>`)다. 기능을 고칠 때 오가는 범위가 한 모듈 안에 있고, 나중에
+다른 애플리케이션과 연동하거나 떼어낼 때도 이 폴더와 이 컨텍스트 접두어의 테이블이 단위가 된다.
+
+계층 사이의 경계는 Gradle 모듈이 아니라 ArchUnit(`ArchitectureRules`)이 강제한다. domain 이 Spring·JPA 를 모른다는 것(R-01)은
+컴파일이 아니라 `./gradlew test` 에서 잡힌다. 같은 저장소에 배치·어드민 같은 두 번째 실행 모듈이 생겨 도메인을 함께 써야 하면, 그때
+`..domain..`, `shared`, `support.error` 패키지를 모듈로 추출한다. R-01 이 domain 의 의존을 막아 두었으므로 추출은 파일 이동으로 끝난다.
 
 ### 패키지 규약
 
-컨텍스트가 계층보다 위에 온다.
+컨텍스트가 계층보다 위에 온다. `support.storage` 를 빼면 모두 `core-api` 에 있다.
 
 ```
-com.meteor.<context>.domain        애그리거트, 도메인 서비스(*Policy)                            (core-domain)
-com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event, *Listener    (core-api)
-com.meteor.<context>.api           *Controller, request/*, response/*                          (core-api)
-com.meteor.<context>.storage       *Repository(public), *Entity, *JpaRepository, *RepositoryAdapter (storage/db-core)
-com.meteor.<context>.clients       외부 연동 어댑터                                             (clients/*)
-com.meteor.shared                  record VO, enum                                              (core-shared)
-com.meteor.support                 컨텍스트에 속하지 않는 공통 영역. 모듈을 가로지른다
-  support.error                      ErrorCode, CoreException, LogLevel                        (core-domain)
-  support.web / support.async        어드바이스, ProblemDetails, 설정                           (core-api)
+com.meteor.<context>.domain        애그리거트, *Policy, 그 컨텍스트만 쓰는 값 타입(enum, record)
+com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event, *Listener, *Query
+com.meteor.<context>.api           *Controller, request/*, response/*
+com.meteor.<context>.storage       *Repository(public), *Entity, *JpaRepository, *RepositoryAdapter(package-private)
+com.meteor.<context>.clients       외부 연동 어댑터
+com.meteor.shared                  컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실리는 값 타입
+com.meteor.support                 컨텍스트에 속하지 않는 공통 영역
+  support.error                      ErrorCode, CoreException, LogLevel. 프레임워크를 모른다
+  support.web / support.async        어드바이스, ProblemDetails, 설정
   support.storage                    DataSource/JPA 설정, BaseEntity                            (storage/db-core)
   support.client                     컨텍스트에 속하지 않는 외부 클라이언트                     (clients/*)
 ```
@@ -46,15 +90,36 @@ com.meteor.support                 컨텍스트에 속하지 않는 공통 영�
 
 | 계층 | 하는 일 | 하지 않는 것 |
 |---|---|---|
-| `api` | HTTP ↔ Command/Result 변환. 엔드포인트 하나는 UseCase 메서드 하나 호출 | `@Transactional`, 도메인·저장소 접근, VO 연산 |
+| `api` | HTTP ↔ Command/Result 변환. 엔드포인트 하나는 UseCase 메서드 하나 호출 | `@Transactional`, 애그리거트·저장소 접근, VO 연산 |
 | `application` | 유스케이스 흐름. 꺼내고, 도메인 메서드를 부르고, 저장한다. `@Transactional` 의 유일한 자리 | 도메인 상태로 분기, 다른 UseCase 호출 |
-| `domain` | 모든 규칙과 상태 전이. 식별자를 가진 가변 객체(애그리거트). 값 타입은 `core-shared` 의 record 를 쓴다 | Spring, JPA, 리포지토리, `*Service` 접미어 |
+| `domain` | 모든 규칙과 상태 전이. 애그리거트, 여러 애그리거트에 걸친 규칙(`*Policy`), 그 컨텍스트의 값 타입 | Spring, JPA, 리포지토리, `*Service` 접미어 |
 | `storage` / `clients` | Repository 인터페이스를 소유하고 구현한다. 엔티티 ↔ 도메인 변환 | 비즈니스 규칙, 트랜잭션 경계 |
+
+### 값 타입의 자리
+
+값 타입은 종류(enum 인가 record 인가)가 아니라 **소유자**로 자리를 정한다.
+
+```
+새 타입이 생겼다
+  │
+  ├─ 식별자가 있고 상태가 바뀐다 ──▶ 애그리거트 (<context>.domain)
+  │
+  └─ 값이다 (enum, record)
+       │
+       ├─ 한 컨텍스트에서만 의미가 있다 ──▶ <context>.domain     예: OrderStatus, PaymentMethod, Email
+       │
+       └─ 컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실린다 ──▶ shared     예: Money, Address
+```
+
+처음에는 컨텍스트 안에 두고, 실제로 경계를 넘을 때 `shared` 로 올린다. 여러 곳이 이미 참조한 뒤에 `shared` 에서 내리는 것은 어렵다.
+상태 enum 이 소유 컨텍스트에 있으므로 다른 컨텍스트가 그 상태로 분기하는 코드는 R-07 이 막는다.
 
 ### 영속화 결정
 
-JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다.** JPA 엔티티는 `storage` 안에 갇히고, 애그리거트는 순수 자바로 `core-domain` 에 있으며,
-둘 사이 변환은 `*RepositoryAdapter` 가 한다. 그 결과 JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
+JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다.** 애그리거트는 순수 자바로 `<context>.domain` 에, JPA 엔티티는
+`<context>.storage` 에 package-private 으로 있고, 둘 사이 변환은 같은 패키지의 `*RepositoryAdapter` 가 한다. 둘이 같은 모듈에
+있어도 엔티티는 package-private 이라 storage 밖에서 보이지 않고(R-08), 애그리거트가 JPA 를 모르는 것은 R-01 이 지킨다. 그 결과
+JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
 
 | 포기하는 것 (애그리거트 중심 설계가 원래 피하는 것) | 유지하는 것 (영속 모델에 붙는 인프라 기능) |
 |---|---|
@@ -63,7 +128,7 @@ JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다
 | cascade. 저장은 애그리거트 단위로 끝난다 | 스키마 매핑과 `validate`, 배치 insert, 방언 추상화 |
 
 멀티테넌트, 감사 이력, 낙관적 락 중 하나라도 필요하면 이 구조를 유지한다. 그런 요구가 없는 작은 서비스는 변환 코드를 없애 주는
-Spring Data JDBC 로 `storage` 모듈만 교체해도 된다. JPA 어노테이션을 애그리거트에 직접 붙이는 방식은 택하지 않는다. 포기한 쪽의
+Spring Data JDBC 로 `storage` 패키지만 교체해도 된다. JPA 어노테이션을 애그리거트에 직접 붙이는 방식은 택하지 않는다. 포기한 쪽의
 편의를 되찾는 대가로 경계를 어기기 쉬운 길(`@ManyToOne` 월경, 암묵적 저장)이 함께 돌아오기 때문이다.
 
 `@Version` 을 쓸 때 애그리거트가 트랜잭션을 넘어 전달된다면 `restore()` 에 version 을 포함시켜 어댑터가 복원 시 넘기도록 한다.
@@ -73,15 +138,16 @@ Spring Data JDBC 로 `storage` 모듈만 교체해도 된다. JPA 어노테이�
 
 | ID | 규칙 | 이유 |
 |---|---|---|
-| R-01 | `domain` 은 Spring, JPA, `application`, `api`, `storage`, `clients` 에 의존하지 않는다 | 규칙이 프레임워크와 분리되어야 순수 단위 테스트가 가능하고, 어느 실행 모듈에서든 재사용된다 |
+| R-01 | `domain` 은 Spring, JPA, `application`, `api`, `storage`, `clients` 에 의존하지 않는다. `support` 에서는 에러 어휘(`support.error`)만 쓰고, 에러 어휘도 프레임워크를 모른다 | 규칙이 프레임워크와 분리되어야 순수 단위 테스트가 가능하다. 같은 모듈 안에 있으므로 컴파일러가 아니라 이 규칙이 경계다. 두 번째 실행 모듈이 생기면 domain 을 그대로 모듈로 추출할 수 있다 |
 | R-02 | `@Transactional` 은 `application` 에만 있다 (클래스·메서드 모두) | 트랜잭션 경계가 한 계층에만 있어야 "이 코드가 어느 트랜잭션 안인가"가 호출 스택 한 칸 위에서 결정된다 |
-| R-03 | `api` 는 `domain`, `storage`, `clients` 에 의존하지 않는다 | 컨트롤러가 애그리거트 메서드를 부르면 트랜잭션 밖에서 상태가 바뀌고 저장이 누락된다. enum·VO 는 `core-shared`, 에러 어휘는 `support.error` 에 있으므로 자연히 허용된다 |
+| R-03 | `api` 는 애그리거트·`*Policy`(상태나 행위를 가진 domain 클래스), `storage`, `clients` 에 의존하지 않는다. 같은 컨텍스트 domain 의 enum·record 는 참조할 수 있다 | 컨트롤러가 애그리거트 메서드를 부르면 트랜잭션 밖에서 상태가 바뀌고 저장이 누락된다. enum 과 record 는 상태를 바꾸는 메서드가 없으므로 이 위험과 무관하다 |
 | R-04 | `*UseCase` 는 다른 `*UseCase` 를 호출하지 않는다 | 트랜잭션 경계가 중첩되지 않게 한다. 공통 흐름은 도메인 서비스나 `*Facade` 로 |
-| R-05 | `domain` 에 `*Service` 접미어 금지. `application` 의 클래스는 `*UseCase`, `*Command`, `*Result`, `*Facade`, `*Event`, `*Listener` 중 하나 | "로직 있는 서비스"와 "트랜잭션만 묶는 서비스"가 공존하는 상황을 이름에서부터 막는다 |
+| R-05 | `domain` 에 `*Service` 접미어 금지. `application` 의 클래스는 `*UseCase`, `*Command`, `*Result`, `*Facade`, `*Event`, `*Listener`, `*Query` 중 하나 | "로직 있는 서비스"와 "트랜잭션만 묶는 서비스"가 공존하는 상황을 이름에서부터 막는다 |
 | R-06 | `storage`, `clients` 어댑터는 `application`, `api` 에 의존하지 않는다 | 어댑터는 저장·연동의 구현일 뿐이며 흐름을 알면 안 된다 |
-| R-07 | 컨텍스트끼리 직접 의존하지 않는다. 허용 통로는 상대 컨텍스트의 `*Facade` 와 `*Event` 뿐 | 컨텍스트 경계가 코드에 있어야 분리 시점에 경계를 찾지 않아도 된다 |
+| R-07 | 컨텍스트끼리 직접 의존하지 않는다. 허용 통로는 상대 컨텍스트의 `*Facade` 와 `*Event` 뿐 | 도메인끼리 얽히지 않게 한다. 상대의 애그리거트·상태 enum 을 import 할 수 없으므로 상대 규칙을 흉내 내 분기하는 코드가 생기지 않는다 |
 | R-08 | JPA 엔티티는 `storage` 에만 있고 밖에서 참조하지 않는다 | 영속 모델이 API 계약이나 도메인이 되는 것을 막는다. 변환은 어댑터 안에서 끝나고, application 은 public `*Repository` 인터페이스만 본다 |
-| R-09 | `core-shared` 에는 record 와 enum 만 있고, 다른 모듈과 프레임워크에 의존하지 않는다 | "값이면 shared, 가변 객체면 domain" 하나로 판단이 끝난다. 모든 계층이 참조하므로 의존이 생기면 전파된다 |
+| R-09 | `shared` 에는 record 와 enum 만 있고, 다른 패키지와 프레임워크에 의존하지 않는다 | 모든 컨텍스트가 참조하므로 의존이 생기면 전파된다. 무엇을 둘지는 [값 타입의 자리](#값-타입의-자리)가 정한다 |
+| R-10 | `*Facade` 의 public 메서드는 void, 원시 타입, `java.lang`, `shared` 의 값만 돌려준다 | Facade 가 모델이나 상태 enum 을 내주면 판단이 호출자에게 넘어가 규칙이 경계 밖으로 샌다. 판단은 소유 컨텍스트가 하고 결과만 돌려준다 (S-10) |
 
 ## 의미 규칙 (S)
 
@@ -89,15 +155,31 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 
 | ID | 규칙 | 신호 |
 |---|---|---|
-| S-01 | UseCase 는 도메인 상태로 분기하지 않는다 | UseCase 안의 `if (order.getStatus() == ...)`. 애그리거트 메서드로 내린다 |
-| S-02 | 애그리거트는 빈약하지 않다 | getter 만 있고 상태 변경이 밖에서 일어남. setter 존재 |
+| S-01 | UseCase 는 도메인 상태로 분기하지 않는다 | UseCase 안의 `if (order.getStatus() == ...)`. 애그리거트 메서드나 `*Policy` 로 내린다 |
+| S-02 | 규칙이 있는 애그리거트는 빈약하지 않다 | getter 만 있고 상태 변경이 밖에서 일어남. setter 존재. 단, 상태 전이·계산·정책이 없는 설정·코드 관리 기능은 단순한 모델을 허용한다 |
 | S-03 | 컨트롤러는 VO 를 생성·변환만 하고 연산하지 않는다 | 컨트롤러에서 `money.multiply(...)` 같은 계산 |
-| S-04 | 컨텍스트 간 참조는 ID 로만 한다 | 다른 컨텍스트의 애그리거트를 필드로 보유, JPA 연관관계 월경 |
-| S-05 | 트랜잭션은 컨텍스트를 넘지 않는다 | 한 UseCase 가 두 컨텍스트의 Repository 를 주입받음. 후속 처리는 `AFTER_COMMIT` 이벤트로 |
-| S-06 | 테이블은 컨텍스트가 소유한다 | 다른 컨텍스트 테이블의 FK, JOIN, 네이티브 쿼리 |
-| S-07 | 이벤트 리스너는 커밋 이후에 동작한다 | `@TransactionalEventListener(phase = BEFORE_COMMIT)`, 동기적으로 상대 결과를 기다리는 리스너 |
+| S-04 | 컨텍스트 간 참조는 ID 로만 한다 | 다른 컨텍스트의 애그리거트를 필드로 보유, JPA 연관관계 월경, 컨텍스트 간 FK |
+| S-05 | 컨텍스트 간 상태 변경은 이벤트로 전달하고, 트랜잭션은 일관성 요구로 고른다 | 함께 바뀌어야 하는 처리(결제 → 주문 PAID)를 `AFTER_COMMIT` 으로 받음. 반대로 실패해도 되는 부가 처리를 같은 트랜잭션에 묶음 |
+| S-06 | 테이블 쓰기는 소유 컨텍스트만 한다 | 다른 컨텍스트 테이블에 대한 INSERT/UPDATE/DELETE, 다른 컨텍스트 테이블의 FK. 여러 컨텍스트를 가로지르는 **읽기** JOIN 은 `query` 컨텍스트에서만 허용 |
+| S-07 | `AFTER_COMMIT` 리스너는 부가 처리에만 쓰고, 실패를 감지할 수단을 함께 둔다 | 핵심 흐름이 커밋 후 리스너에 의존함. 리스너가 부르는 UseCase 메서드에 `REQUIRES_NEW` 가 없음. 실패가 조용히 사라짐 |
 | S-08 | 어댑터는 변환만 하고 규칙을 갖지 않는다 | storage/clients 안의 비즈니스 분기 |
 | S-09 | 저장은 명시적이다 | 도메인 객체를 바꾸고 `repository.save()` 를 호출하지 않는 UseCase |
+| S-10 | Facade 는 판단 결과를 돌려준다 (Tell, Don't Ask) | 상태를 문자열·boolean 으로 우회해 내주는 메서드(`getStatusName()`, `isPaid()`)로 호출자가 분기함. R-10 이 타입은 막지만 의미는 사람이 본다 |
+| S-11 | 여러 애그리거트에 걸친 규칙은 `*Policy` 에 둔다 | UseCase 가 저장소 조회 결과(건수, 목록)로 직접 판단함. UseCase 는 사실을 꺼내 Policy 에 넘기기만 한다 |
+
+### 컨텍스트 간 협력 고르기
+
+S-05, S-06, S-07, S-10 을 상황별로 묶으면 다음과 같다. 레퍼런스 코드가 각 경우의 본보기다.
+
+| 상황 | 통로 | 트랜잭션 | 본보기 |
+|---|---|---|---|
+| 상대에게 즉시 답을 받아야 한다 | 상대의 `*Facade` (판단 반환) | 호출자의 트랜잭션 | `MemberFacade.ensureActive()`, `OrderFacade.payableAmount()` |
+| 내 변경과 상대의 변경이 함께 성공·실패해야 한다 | `*Event` + `@EventListener` (동기) | **같은 트랜잭션**. 상대 실패 시 함께 롤백 | `PaymentCompletedEvent → OrderEventListener` |
+| 내 변경이 확정된 뒤의 부가 처리다. 실패해도 내 변경은 유효하다 | `*Event` + `@TransactionalEventListener` (커밋 후) | 리스너가 `REQUIRES_NEW` 로 새 트랜잭션. 실패는 로그·점검으로 감지 | `OrderPaidEvent → ShippingEventListener` |
+| 여러 컨텍스트의 데이터를 한 화면에 보여준다 | `query` 컨텍스트 (`com.meteor.query.application.*Query`) | 읽기 전용 | 필요할 때 만든다. 다른 컨텍스트의 클래스를 참조하지 않고 SQL 로만 읽으므로 R-07 이 그대로 적용된다 |
+
+같은 트랜잭션으로 묶인 리스너(두 번째 줄)는 [측정](#측정) 항목으로 센다. 이 흐름을 다른 애플리케이션과 나눠야 하는 날이 오면 이 목록이
+그대로 비동기·보상 처리로 바꿀 대상이자 그 비용의 추정치가 된다.
 
 ## 예외 처리
 
@@ -107,11 +189,11 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 2. `docs/adr/` 에 ADR 한 장을 쓴다. 규칙 ID, 이유, 만료 조건(날짜 또는 상황), 되돌리는 방법.
 3. 분기마다 동결 목록과 ADR 을 리뷰해 만료된 것을 되돌린다.
 
-분리 가능성은 규칙이 아니라 예외의 개수로 결정된다. 예외 목록이 보여야 한다.
+경계가 얼마나 지켜지고 있는지는 규칙이 아니라 예외의 개수로 드러난다. 예외 목록이 보여야 한다.
 
 ### 값 타입의 검증 실패
 
-`core-shared` 는 외부 의존이 없으므로 VO 생성자의 검증 실패는 `IllegalArgumentException` 으로 던진다.
+VO 는 외부 의존이 없으므로 생성자의 검증 실패는 `IllegalArgumentException` 으로 던진다.
 `ApiControllerAdvice` 가 이를 `C001` 로 바꾼다. 도메인 규칙 위반은 `CoreException` 으로 던진다. 둘의 구분은 "값 자체가 성립하지 않는가"
 (`Money(-1)`) 와 "값은 맞지만 지금 상태에서 허용되지 않는가" (`order.cancel()` on PAID) 다.
 
@@ -134,6 +216,9 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 나타날 때 나눈다. 모놀리스 안에서 두 컨텍스트를 합치는 것은 패키지 이동으로 끝나지만, 뭉친 것을 나중에 쪼개는 것은 얽힌 참조를
 풀어야 해서 비싸다.
 
+트랜잭션 테스트가 "함께 바뀌어야 한다"고 답해도 언어가 다르면 컨텍스트는 나누고 같은 트랜잭션 이벤트로 잇는다(S-05). 결제와 주문이
+그 예다. 경계는 언어와 변경 이유로 긋고, 트랜잭션은 일관성 요구로 고른다.
+
 이벤트 스토밍으로 비즈니스 이벤트를 시간순으로 나열하면 흐름이 꺾이는 축(주문 확정, 결제 완료, 배송 시작)이 보이고, 축 사이에
 묶이는 커맨드와 애그리거트가 컨텍스트 하나다. 축이 되는 이벤트는 그대로 컨텍스트 간 `*Event` 가 된다.
 
@@ -144,9 +229,9 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 | 두 컨텍스트 사이에 Facade 호출이 **양방향**으로 오간다 | 둘은 하나의 모델을 둘로 찢은 것이다 | 합친다 |
 | 한 유스케이스가 상대 Facade 를 **여러 번** 호출하며 흐름을 완성한다 (chatty) | 흐름의 소유자가 잘못됐거나 경계가 흐름 한가운데를 지난다 | 흐름이 속한 쪽으로 UseCase 를 옮기거나 합친다 |
 | 이벤트가 상대 애그리거트의 **필드 전부**를 실어 나른다 | 수신 측이 상대 모델을 그대로 필요로 한다. 언어가 같다는 뜻이다 | 합치거나, 수신 측이 정말 필요한 값만 담은 이벤트로 줄인다 |
-| 상대의 ID 가 아니라 **내부 필드**를 계속 읽는다 (S-04 반복) | 참조 테스트 실패. 데이터 소유자가 잘못됐다 | 그 데이터를 읽는 쪽으로 소유권을 옮기거나 합친다 |
-| 한 UseCase 가 두 컨텍스트의 Repository 를 주입받는다 (S-05 반복) | 트랜잭션 테스트 실패. 함께 바뀌어야 하는 것을 갈랐다 | 합친다. 정말 최종 일관성으로 충분하면 이벤트로 바꾼다 |
-| `shared` 나 `common` 성격의 컨텍스트가 **자꾸 커진다** | 소속을 정하지 못한 모델이 쌓이고 있다. 보통 경계가 모호한 것이다 | 각 항목을 언어 테스트로 다시 분류한다. `core-shared` 는 값 연산만 남긴다 |
+| 상대의 ID 가 아니라 **내부 필드**를 계속 읽는다 (S-04, S-10 반복) | 참조 테스트 실패. 데이터 소유자가 잘못됐다 | 그 데이터를 읽는 쪽으로 소유권을 옮기거나 합친다 |
+| 같은 트랜잭션으로 묶인 리스너가 **한 컨텍스트 쌍에 계속 늘어난다** | 둘은 늘 함께 바뀐다. 언어까지 같다면 하나의 모델이다 | 언어 테스트를 다시 한다. 언어가 같으면 합친다 |
+| `shared` 가 **자꾸 커진다** | 소속을 정하지 못한 모델이 쌓이고 있다. 보통 경계가 모호한 것이다 | 각 항목을 [값 타입의 자리](#값-타입의-자리) 기준으로 다시 분류한다. 계약에 실리지 않는 값은 컨텍스트로 내린다 |
 | 같은 이름의 클래스가 두 컨텍스트에 **동일한 필드**로 존재한다 | 언어가 같은데 억지로 나눴다 | 합친다. 필드가 다르면 정상이다 |
 | 한 컨텍스트가 다른 컨텍스트 **없이는 테스트할 수 없다** | 독립적인 모델이 아니다 | 의존 방향을 한쪽으로 정리하거나 합친다 |
 | 상대 컨텍스트의 **상태 변화를 폴링**하거나 조회로 흐름을 이어간다 | 이벤트가 있어야 할 자리에 없다 | 축이 되는 이벤트를 정의하고 발행한다 |
@@ -156,27 +241,30 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 신호는 대부분 "합친다"로 끝난다. 처음에 너무 잘게 나눈 비용이 너무 크게 나눈 비용보다 흔하기 때문이다. 반대로 마지막 두 신호는
 "나눈다"로 끝나며, 이쪽은 ArchUnit 이 잡지 못하므로 분기 리뷰에서 사람이 본다.
 
-신호가 보이면 경계를 바꾸는 것을 미루지 않는다. 경계가 틀린 채로 쌓인 코드는 서비스 분리 시점에 전부 다시 풀어야 한다.
+신호가 보이면 경계를 바꾸는 것을 미루지 않는다. 경계가 틀린 채로 쌓인 코드는 경계를 바꾸려 할 때 전부 다시 풀어야 한다.
 
 ## 새 컨텍스트 추가
 
-`member`, `order`, `payment`, `shipping` 네 컨텍스트가 레퍼런스다. 동기 질의는 `order → MemberFacade`, `payment → OrderFacade`,
-커밋 후 통지는 `PaymentCompletedEvent → OrderEventListener`, `OrderPaidEvent → ShippingEventListener` 를 본보기로 삼는다.
+`member`, `order`, `payment`, `shipping` 네 컨텍스트가 레퍼런스다. 판단을 돌려주는 Facade 는 `MemberFacade.ensureActive()`,
+`OrderFacade.payableAmount()`, 여러 애그리거트에 걸친 규칙은 `OrderLimitPolicy`, 같은 트랜잭션 협력은
+`PaymentCompletedEvent → OrderEventListener`, 커밋 후 부가 처리는 `OrderPaidEvent → ShippingEventListener` 를 본보기로 삼는다.
 사람은 문서보다 옆 패키지를 복사하므로, 레퍼런스가 규칙을 어기지 않게 유지하는 것이 가장 강한 강제 수단이다.
 
 경계를 어디에 그을지는 [컨텍스트 식별](#컨텍스트-식별) 절의 테스트로 정하고, 같은 절의 "잘못 나누었다는 신호"로 분기마다 점검한다.
+모든 코드는 `core-api` 의 `com.meteor.<context>` 아래에 둔다.
 
-1. `core-domain` 에 `com.meteor.<context>.domain` 을 만들고 애그리거트를 둔다. 순수 단위 테스트를 같이 쓴다. 값 타입이 필요하면
-   `core-shared` 에 record 로 둔다.
-2. `storage/db-core` 에 `com.meteor.<context>.storage` 를 만들고 `*Repository`(public 인터페이스, 도메인 객체를 주고받음),
-   `*Entity`(package-private), `*JpaRepository`(package-private), `*RepositoryAdapter`(package-private) 를 둔다. 테이블 이름은 컨텍스트 접두어.
-3. `core-api` 에 `com.meteor.<context>.application` 의 `*UseCase`, `*Command`, `*Result` 와 `com.meteor.<context>.api` 의
-   컨트롤러·DTO 를 둔다.
-4. 다른 컨텍스트와 협력이 필요하면 두 통로 중 하나를 쓴다. 직접 import 는 R-07 이 막는다.
-   - 즉시 답이 필요한 질의: 상대 컨텍스트의 `application` 에 `*Facade` 를 둔다. 반환 타입은 `core-shared` 의 값이나 원시 타입으로 제한해
-     상대 모델이 새지 않게 한다.
-   - 후속 처리: `*Event` 를 발행하고 받는 쪽 `application` 에 `*Listener` 를 둔다. 리스너는 `@TransactionalEventListener`(커밋 후)로 받고,
-     호출하는 UseCase 메서드는 `REQUIRES_NEW` 로 새 트랜잭션을 연다. 발행 측 트랜잭션은 이미 끝났기 때문이다.
+1. `<context>.domain` 에 애그리거트를 두고 순수 단위 테스트를 같이 쓴다. 그 컨텍스트만 쓰는 enum·record 도 여기에 둔다.
+   상태 전이나 정책이 없는 기능이면 단순한 모델로 시작한다(S-02).
+2. `<context>.storage` 에 `*Repository`(public 인터페이스, 도메인 객체를 주고받음), `*Entity`, `*JpaRepository`,
+   `*RepositoryAdapter`(모두 package-private)를 둔다. 테이블 이름은 컨텍스트 접두어. 어댑터 왕복 테스트(`*RepositoryAdapterIT`)를 같이 쓴다.
+3. `<context>.application` 의 `*UseCase`, `*Command`, `*Result` 와 `<context>.api` 의 컨트롤러·DTO 를 둔다.
+4. 다른 컨텍스트와 협력이 필요하면 [컨텍스트 간 협력 고르기](#컨텍스트-간-협력-고르기) 표에서 통로를 고른다. 직접 import 는 R-07 이 막는다.
+   - 즉시 답이 필요한 질의: 상대 컨텍스트의 `application` 에 `*Facade` 를 둔다. 데이터가 아니라 판단 결과를 돌려준다(R-10, S-10).
+   - 함께 바뀌어야 하는 처리: `*Event` 를 발행하고 받는 쪽 `application` 에 `@EventListener` 로 받는 `*Listener` 를 둔다. 받는 UseCase
+     메서드는 기본 전파(`REQUIRED`)로 발행 측 트랜잭션에 참여한다.
+   - 확정 뒤의 부가 처리: `*Listener` 를 `@TransactionalEventListener`(커밋 후)로 받고, 호출하는 UseCase 메서드는 `REQUIRES_NEW` 로
+     새 트랜잭션을 연다. 실패는 호출자에게 전파되지 않으므로 감지 수단을 함께 둔다(S-07).
+   - 컨텍스트 간 계약에 실리는 값이 새로 생기면 `shared` 로 올린다.
 5. `ErrorCode` 에 접두어를 추가한다.
 6. `./gradlew test` 로 R 규칙을 통과하는지 확인한다.
 
@@ -185,6 +273,8 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 분기 리뷰에서 보는 숫자.
 
 - 동결된 ArchUnit 위반 수
+- 같은 트랜잭션으로 묶인 컨텍스트 간 리스너 수 (컨텍스트 쌍별). 연동·분리 시 비동기로 바꿔야 할 목록
 - 컨텍스트 간 협력 중 이벤트 비율 (동기 Facade 호출 대비)
-- S-06 위반(월경 쿼리) 수
+- S-06 위반(다른 컨텍스트 테이블 쓰기) 수
 - 컨텍스트 쌍별 Facade 호출 방향 (양방향인 쌍의 수)
+- `shared` 의 타입 수 (늘어나는 추세면 경계가 모호해지는 신호)

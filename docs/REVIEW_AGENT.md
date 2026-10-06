@@ -2,6 +2,7 @@
 
 코드리뷰를 요청하기 전에 팀원이 직접 돌리는 아키텍처 리뷰. [Pi](https://github.com/badlogic/pi-mono) 를 읽기 전용 에이전트로 실행해
 [ARCHITECTURE.md](ARCHITECTURE.md) 의 의미 규칙(S-xx)을 검사한다. 구조 규칙(R-xx)은 ArchUnit 이 맡는다.
+판단이 애매하면 ARCHITECTURE.md 의 [설계 원칙](ARCHITECTURE.md#설계-원칙)으로 돌아간다.
 
 ## 설치와 설정
 
@@ -101,8 +102,8 @@ review/
 
 | 수단 | 맡는 규칙 | 성격 |
 |---|---|---|
-| ArchUnit (`./gradlew test`) | R-01 ~ R-09 | 결정적. 전체 코드 그래프를 본다. 위반이면 머지 불가 |
-| 리뷰 에이전트 | S-01 ~ S-09 | 의미 판단. PR diff 와 주변 코드를 본다. 규칙별로 차단/권고를 정한다 |
+| ArchUnit (`./gradlew test`) | R-01 ~ R-10 | 결정적. 전체 코드 그래프를 본다. 위반이면 머지 불가 |
+| 리뷰 에이전트 | S-01 ~ S-11 | 의미 판단. PR diff 와 주변 코드를 본다. 규칙별로 차단/권고를 정한다 |
 | 사람 | 설계 판단 | 경계가 맞는지, 규칙 자체를 바꿔야 하는지 |
 
 ## 에이전트 입력
@@ -128,19 +129,21 @@ review/
 | 규칙 | 확인 방법 | 오탐 주의 |
 |---|---|---|
 | S-01 | `*UseCase` 본문에서 도메인 객체의 getter 결과로 분기하는 `if`/`switch` | 입력 검증(null, 빈 값)은 위반 아님 |
-| S-02 | `domain` 의 애그리거트에 public setter, 상태 변경 메서드 부재, UseCase 가 `restore(...)` 로 새 상태를 조립 | record VO 는 대상 아님 |
+| S-02 | `domain` 의 애그리거트에 public setter, 상태 변경 메서드 부재, UseCase 가 `restore(...)` 로 새 상태를 조립 | record VO 는 대상 아님. 상태 전이·계산·정책이 없는 설정·코드 관리 기능의 단순 모델은 위반 아님 |
 | S-03 | `*Controller` 에서 `of`/`from`/getter 외의 VO 메서드 호출 | Request → Command 변환은 허용 |
-| S-04 | `domain` 클래스 필드 타입이 다른 컨텍스트의 애그리거트. `storage` 엔티티의 `@ManyToOne` 등이 다른 컨텍스트 엔티티 | ID 타입(VO) 보유는 허용 |
-| S-05 | `*UseCase` 생성자가 두 컨텍스트 이상의 `*Repository`/`*Facade` 를 주입 | 조회 전용 Facade 하나를 읽는 것은 권고 수준 |
-| S-06 | `@Query`, 네이티브 쿼리, JPQL 에 다른 컨텍스트 테이블·엔티티 등장 | 같은 컨텍스트 내부 JOIN 은 허용 |
-| S-07 | `@TransactionalEventListener` 의 phase 가 `BEFORE_COMMIT`, 리스너가 반환값을 호출자에게 돌려줌, 리스너가 부르는 UseCase 메서드에 `REQUIRES_NEW` 가 없음 | `@EventListener` 동기 리스너는 같은 컨텍스트 내부라면 허용 |
+| S-04 | `domain` 클래스 필드 타입이 다른 컨텍스트의 애그리거트. `storage` 엔티티의 `@ManyToOne` 등이 다른 컨텍스트 엔티티. 다른 컨텍스트 테이블로의 FK | ID 타입(VO) 보유는 허용 |
+| S-05 | 다른 컨텍스트의 `*Event` 를 받는 리스너의 트랜잭션 선택. 발행 측과 함께 성공·실패해야 하는 처리(상태 전이, 금액 확정)를 `@TransactionalEventListener` 로 받음. 반대로 실패해도 발행 측이 유효한 부가 처리(알림, 외부 연동, 배송 준비)를 `@EventListener` 로 같은 트랜잭션에 묶음 | 판단 근거가 diff 에 없으면 suspect 로 표시하고 이유를 묻는다 |
+| S-06 | 다른 컨텍스트 테이블에 대한 INSERT/UPDATE/DELETE(다른 컨텍스트의 `*Repository` 로 저장하는 것 포함), `query` 컨텍스트 밖의 쿼리에 다른 컨텍스트 테이블 등장 | 같은 컨텍스트 내부 JOIN, `query` 컨텍스트의 읽기 전용 JOIN 은 허용 |
+| S-07 | `@TransactionalEventListener` 리스너가 핵심 흐름을 처리함, 리스너가 부르는 UseCase 메서드에 `REQUIRES_NEW` 가 없음, 실패를 감지할 수단(로그 알림, 점검 쿼리)이 없음 | `@EventListener` 동기 리스너는 S-05 에서 본다 |
 | S-08 | `storage`/`clients` 클래스 안의 도메인 상태 분기, 계산 | null 처리와 타입 변환은 허용 |
 | S-09 | UseCase 가 애그리거트 메서드를 호출한 뒤 `save()` 없이 반환 | 읽기 전용 UseCase 는 대상 아님 |
+| S-10 | `*Facade` 가 상태를 `String`·`boolean` 으로 우회해 내주고(`getStatusName()`, `isPaid()`), 호출자가 그 값으로 분기 | `ensureXxx()` 처럼 판단 후 예외로 거절하는 메서드, `payableAmount()` 처럼 판단을 거친 값은 정상 |
+| S-11 | `*UseCase` 가 저장소 조회 결과(건수, 목록)를 직접 비교해 거절·분기 | Policy 에 사실을 넘기기만 하는 것은 정상 |
 
 ## 차단 범위
 
-- 차단(머지 불가): S-04, S-05, S-06. 분리 비용을 직접 만드는 규칙이고 오탐이 거의 없다.
-- 권고(코멘트만): 나머지. 골든 세트에서 정밀도가 90% 를 넘으면 차단으로 올린다.
+- 차단(머지 불가): S-04, S-06. 도메인끼리 얽히게 만드는 규칙이고 오탐이 거의 없다.
+- 권고(코멘트만): 나머지. S-05 는 일관성 요구라는 비즈니스 판단이 들어가므로 권고로 둔다. 골든 세트에서 정밀도가 90% 를 넘으면 차단으로 올린다.
 
 오탐이 차단하기 시작하면 팀은 에이전트를 무시하는 법을 배운다. 차단 범위는 측정 결과로만 넓힌다.
 
