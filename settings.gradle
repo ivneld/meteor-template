@@ -9,12 +9,10 @@ pluginManagement {
 
 rootProject.name = 'meteor-template'
 
-// core: 도메인과 그것을 노출하는 실행 모듈
-include 'core:core-shared'   // 모든 계층이 공유하는 어휘. enum, VO, ErrorCode. 의존성 없음
-include 'core:core-domain'   // 애그리거트, 도메인 서비스, 리포지토리 포트. Spring/JPA 를 모름
-include 'core:core-api'      // 유일한 실행 모듈. application(UseCase) + api(controller)
+// core: 유일한 실행 모듈. 컨텍스트(com.meteor.<context>) 하나가 domain/application/api/storage 네 패키지로 이 안에 모인다
+include 'core:core-api'
 
-// storage: 도메인 포트의 구현 (JPA 엔티티는 이 안에서만 존재)
+// storage: 저장소 인프라(DataSource, JPA 설정, BaseEntity). 엔티티와 어댑터는 각 컨텍스트의 storage 패키지에 있다
 include 'storage:db-core'
 
 // clients: 외부 시스템 연동 어댑터

@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /**
- * 컨텍스트별 storage 패키지(com.meteor.&lt;context&gt;.storage)를 모두 스캔한다.
+ * 컨텍스트별 storage 패키지(com.meteor.&lt;context&gt;.storage)를 모두 스캔한다. 엔티티와 JpaRepository 는
+ * core-api 에 있다.
  */
 @Configuration
 @EnableTransactionManagement

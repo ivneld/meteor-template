@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * 이 모듈만 단독으로 컨텍스트 테스트할 때 사용하는 진입점. com.meteor 아래 storage 설정과 어댑터를 스캔한다.
+ * 이 모듈만 단독으로 컨텍스트 테스트할 때 사용하는 진입점. 저장소 인프라 설정(support.storage)을 스캔한다.
  */
 @ConfigurationPropertiesScan
 @SpringBootApplication

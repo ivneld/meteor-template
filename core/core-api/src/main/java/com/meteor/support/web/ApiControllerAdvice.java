@@ -26,8 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *
  * <ul>
  * <li>{@link CoreException}: 예외가 가진 {@link ErrorCode} 의 HTTP 상태와 코드로 응답</li>
- * <li>{@link IllegalArgumentException}: core-shared VO 의 검증 실패.
- * {@link ErrorCode#INVALID_REQUEST} 와 메시지로 응답</li>
+ * <li>{@link IllegalArgumentException}: VO 의 검증 실패. {@link ErrorCode#INVALID_REQUEST} 와
+ * 메시지로 응답</li>
  * <li>Spring MVC 표준 예외(검증 실패, 404, 405, 415 ...): 부모 클래스가 만든 ProblemDetail 에 상태에 맞는 공통
  * 코드를 덧씌움</li>
  * <li>그 외 모든 예외: {@link ErrorCode#INTERNAL_ERROR}</li>
@@ -46,8 +46,7 @@ public class ApiControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * core-shared 의 VO 는 외부 의존이 없어 검증 실패를 IllegalArgumentException 으로 던진다. 여기서 400 으로
-     * 바꾼다.
+     * VO 는 외부 의존이 없어 검증 실패를 IllegalArgumentException 으로 던진다. 여기서 400 으로 바꾼다.
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ProblemDetail> handleIllegalArgument(IllegalArgumentException e) {

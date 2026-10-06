@@ -8,7 +8,7 @@ import com.meteor.support.error.ErrorCode;
 import org.springframework.http.ProblemDetail;
 
 /**
- * {@link ErrorCode} 를 RFC 9457 ProblemDetail 로 렌더링한다. 에러 코드는 어휘(core-domain),
+ * {@link ErrorCode} 를 RFC 9457 ProblemDetail 로 렌더링한다. 에러 코드는 어휘(support.error),
  * ProblemDetail 은 표현(api)이다.
  */
 public final class ProblemDetails {

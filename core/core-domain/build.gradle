@@ -1,4 +1,0 @@
-// 애그리거트, 도메인 서비스, 에러 어휘(ErrorCode, CoreException). Spring 과 JPA 를 모른다 (R-01).
-dependencies {
-    api project(':core:core-shared')
-}
