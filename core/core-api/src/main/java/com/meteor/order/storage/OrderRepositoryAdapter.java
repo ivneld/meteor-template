@@ -3,6 +3,7 @@ package com.meteor.order.storage;
 import java.util.Optional;
 
 import com.meteor.order.domain.Order;
+import com.meteor.order.domain.OrderStatus;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
 
@@ -34,6 +35,11 @@ class OrderRepositoryAdapter implements OrderRepository {
             entity.apply(order);
         }
         return jpa.save(entity).toDomain();
+    }
+
+    @Override
+    public long countByMemberIdAndStatus(Long memberId, OrderStatus status) {
+        return jpa.countByMemberIdAndStatus(memberId, status);
     }
 
 }

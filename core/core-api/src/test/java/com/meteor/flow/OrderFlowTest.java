@@ -7,6 +7,7 @@ import com.meteor.member.domain.Email;
 import com.meteor.order.application.OrderPlaceCommand;
 import com.meteor.order.application.OrderResult;
 import com.meteor.order.application.OrderUseCase;
+import com.meteor.order.domain.OrderLimitPolicy;
 import com.meteor.order.domain.OrderStatus;
 import com.meteor.payment.application.PaymentPayCommand;
 import com.meteor.payment.application.PaymentResult;
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 네 컨텍스트가 Facade 와 Event 로만 협력해 주문 한 건이 끝까지 흐르는지 확인한다.
  *
  * <pre>
- * 회원 가입 → 주문(MemberFacade 로 회원 확인) → 결제(OrderFacade 로 금액 조회)
+ * 회원 가입 → 주문(MemberFacade 로 회원 확인, OrderLimitPolicy 로 한도 확인) → 결제(OrderFacade 로 금액 조회)
  *   → PaymentCompletedEvent → 주문 PAID (결제와 같은 트랜잭션)
  *   → 커밋 → OrderPaidEvent → 배송 READY (커밋 이후 부가 처리) → SHIPPED → DELIVERED
  * </pre>
@@ -84,6 +85,20 @@ class OrderFlowTest extends ContextTest {
         assertThatThrownBy(() -> paymentUseCase.pay(new PaymentPayCommand(order.id(), PaymentMethod.CARD)))
             .isInstanceOf(CoreException.class)
             .satisfies(e -> assertThat(((CoreException) e).getErrorCode()).isEqualTo(ErrorCode.ORDER_NOT_PAYABLE));
+    }
+
+    @Test
+    void memberCannotHoldMoreAwaitingPaymentOrdersThanTheLimit() {
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("limit@example.com"), "kim")).id();
+        Address address = new Address("Seoul", "Teheran-ro 1", "06000");
+        for (int i = 0; i < OrderLimitPolicy.MAX_AWAITING_PAYMENT; i++) {
+            orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000), address));
+        }
+
+        assertThatThrownBy(
+                () -> orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000), address)))
+            .isInstanceOf(CoreException.class)
+            .satisfies(e -> assertThat(((CoreException) e).getErrorCode()).isEqualTo(ErrorCode.ORDER_LIMIT_EXCEEDED));
     }
 
     @Test

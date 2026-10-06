@@ -30,6 +30,7 @@ public enum ErrorCode {
     ORDER_NOT_FOUND("O001", 404, "Order not found.", LogLevel.INFO),
     ORDER_NOT_PAYABLE("O002", 409, "Order is not in a payable state.", LogLevel.INFO),
     ORDER_NOT_CANCELLABLE("O003", 409, "Order can no longer be cancelled.", LogLevel.INFO),
+    ORDER_LIMIT_EXCEEDED("O004", 409, "Too many orders are awaiting payment.", LogLevel.INFO),
 
     // ----- 결제 (P) -----
     PAYMENT_NOT_FOUND("P001", 404, "Payment not found.", LogLevel.INFO),
