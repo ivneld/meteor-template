@@ -8,7 +8,6 @@ import com.meteor.support.error.ErrorCode;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -51,9 +50,10 @@ public class OrderUseCase {
     }
 
     /**
-     * 결제 완료 이벤트 리스너가 호출한다. 리스너는 결제 트랜잭션이 커밋된 뒤 실행되므로 새 트랜잭션을 열어야 한다.
+     * 결제 완료 이벤트 리스너가 결제 트랜잭션 안에서 호출한다. 새 트랜잭션을 열지 않고 결제 트랜잭션에 참여하므로 결제와 주문 PAID 는 함께
+     * 커밋되거나 함께 롤백된다(S-05).
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public OrderResult markPaid(Long orderId) {
         Order order = load(orderId);
         order.markPaid();

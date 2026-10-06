@@ -19,7 +19,7 @@ public class ShippingUseCase {
         this.shippingRepository = shippingRepository;
     }
 
-    /** 주문 결제 완료 이벤트 리스너가 호출한다. 커밋 이후에 실행되므로 새 트랜잭션을 연다. */
+    /** 주문 결제 완료 이벤트 리스너가 호출한다. 발행 측 트랜잭션이 이미 커밋된 뒤라 새 트랜잭션을 연다(S-07). */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ShippingResult prepare(Long orderId, Address address) {
         return ShippingResult.from(shippingRepository.save(Shipping.prepare(orderId, address)));
