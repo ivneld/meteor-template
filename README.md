@@ -1,21 +1,25 @@
 # meteor-template
 
-Spring Boot(Java) 서비스를 팀이 함께 개발하기 위한 멀티모듈 템플릿.
+Spring Boot(Java) 서비스를 팀이 함께 개발하기 위한 템플릿.
 
-- 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 코드는 컨텍스트(`member`, `order`, `payment`, `shipping` ...) 단위로 패키징된다.
-- 컨텍스트 안은 `domain / application / api / storage` 네 계층. 도메인 규칙은 `core-domain` 에만, 트랜잭션 경계는 `application` 에만 있다.
-- 컨텍스트끼리는 `*Facade` 와 `*Event` 로만 협력한다. 이 경계들은 ArchUnit 테스트와 리뷰 에이전트가 강제한다.
+목표는 두 가지다. **도메인 규칙은 애그리거트 한 곳에 모으고**, **컨텍스트 경계는 지금의 유지보수와 새 애플리케이션과의 연동을 위해
+지킨다.** 서비스 분리를 미리 대비하지 않는다. 경계를 지킨 결과로 분리 가능성이 따라올 뿐이다. 판단 기준은
+[설계 원칙](docs/ARCHITECTURE.md#설계-원칙)에 있다.
+
+- 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 컨텍스트(`member`, `order`, `payment`, `shipping` ...) 하나는 `core-api` 안의 폴더 하나다.
+- 컨텍스트 안은 `domain / application / api / storage` 네 패키지. 도메인 규칙은 `domain` 에만, 트랜잭션 경계는 `application` 에만 있다.
+  애그리거트와 JPA 엔티티는 분리되어 있고 어댑터가 변환한다.
+- 컨텍스트끼리는 ID 와 `*Facade`(판단 결과 반환), `*Event` 로만 협력한다. 이 경계들은 ArchUnit 테스트와 리뷰 에이전트가 강제한다.
 
 ## 모듈 구성
 
 ```
 meteor-template
 ├── core
-│   ├── core-shared     모든 계층이 공유하는 값 타입. record(VO) 와 enum 만. 외부 의존 0
-│   ├── core-domain     애그리거트, 도메인 서비스, 에러 어휘(ErrorCode, CoreException). Spring/JPA 를 모름
-│   └── core-api        유일한 실행 모듈. application(UseCase) + api(Controller) + support(설정, 어드바이스)
+│   └── core-api        유일한 실행 모듈. 컨텍스트마다 domain / application / api / storage 패키지
+│                       + shared(컨텍스트 간 계약 값) + support(에러 어휘, 웹 설정, 어드바이스)
 ├── storage
-│   └── db-core         Repository 인터페이스와 JPA 구현. 엔티티는 이 안에서만 존재
+│   └── db-core         저장소 인프라. DataSource, JPA 설정, BaseEntity
 ├── clients
 │   └── client-example  OpenFeign 기반 외부 연동 어댑터 예시
 ├── support
@@ -30,44 +34,59 @@ meteor-template
     └── REVIEW_AGENT.md   리뷰 에이전트 하네스
 ```
 
-### 의존 방향
+### 컨텍스트 하나의 모양
 
 ```
-        api ──► application ──► domain ◄── storage / clients
-         │           │            ▲              │
-         └───────────┴────────────┴──────────────┴──► core-shared
+core-api/src/main/java/com/meteor/order
+├── domain        Order(애그리거트), OrderStatus, OrderLimitPolicy        ← 규칙은 여기에만
+├── application   OrderUseCase, OrderFacade, OrderPaidEvent, OrderEventListener
+├── api           OrderController, request/, response/
+└── storage       OrderRepository(public)
+                  OrderEntity, OrderJpaRepository, OrderRepositoryAdapter (package-private)
 ```
 
-`core-domain` 은 아무것도 모른다. `storage` 는 도메인 객체를 주고받는 `*Repository` 를 소유·구현하므로 도메인에 의존한다.
-`core-api` 만 전부를 안다. 실행 모듈이 얇기 때문에 배치나 다른 API 모듈을 추가할 때 `core-domain` 과 `storage` 를 그대로 재사용한다.
+```
+        api ──► application ──► domain ◄── storage
+         │           │            │           │
+         └───────────┴────────────┴───────────┴──► shared, support.error
+```
+
+`domain` 은 Spring 과 JPA 를 모른다. `storage` 는 도메인 객체를 주고받는 `*Repository` 를 소유·구현하므로 도메인에 의존한다.
+계층이 한 모듈에 있으므로 이 방향은 Gradle 이 아니라 ArchUnit(R-01 ~ R-10)이 강제한다. 같은 저장소에 배치·어드민 같은 두 번째 실행
+모듈이 생기면 그때 `domain` 패키지를 모듈로 추출한다([SCALING.md](docs/SCALING.md)).
 
 ## 레퍼런스 도메인
 
-구조를 보여주기 위한 최소한의 이커머스 흐름. 네 컨텍스트가 `*Facade`(동기 질의)와 `*Event`(커밋 후 통지)로만 협력한다.
+구조를 보여주기 위한 최소한의 이커머스 흐름. 네 컨텍스트가 `*Facade`(판단을 돌려주는 동기 질의)와 `*Event` 로만 협력한다.
+이벤트는 일관성 요구에 따라 두 가지로 받는다.
 
 ```
  member ◄──MemberFacade.ensureActive──── order ◄──OrderFacade.payableAmount──── payment
                                            │ ▲                                     │
-                                           │ └────── PaymentCompletedEvent ◄────────┘
+                                           │ └── PaymentCompletedEvent ◄───────────┘
+                                           │     (같은 트랜잭션: 결제와 주문 PAID 는 함께 커밋·롤백)
                                            │
                                            └──── OrderPaidEvent ────► shipping
+                                                 (커밋 이후: 배송 준비는 확정 뒤의 부가 처리)
 ```
 
 | 컨텍스트 | 애그리거트 | 규칙 | 다른 컨텍스트와의 접점 |
 |---|---|---|---|
-| `member` | `Member` | 탈퇴는 한 번만 | `MemberFacade.ensureActive()` 를 공개 |
-| `order` | `Order` | 수량 1 이상, CREATED 일 때만 결제·취소 가능 | 회원을 `MemberFacade` 로 확인, `OrderFacade.payableAmount()` 공개, 결제 완료 이벤트를 받아 PAID, `OrderPaidEvent` 발행 |
+| `member` | `Member` | 탈퇴는 한 번만, 활성 회원만 다른 컨텍스트의 행위 주체가 됨 | `MemberFacade.ensureActive()` 를 공개 |
+| `order` | `Order` | 수량 1 이상, CREATED 일 때만 결제·취소 가능. 회원당 결제 대기 주문은 3건까지(`OrderLimitPolicy`) | 회원을 `MemberFacade` 로 확인, `OrderFacade.payableAmount()` 공개, 결제 완료 이벤트를 결제 트랜잭션 안에서 받아 PAID, `OrderPaidEvent` 발행 |
 | `payment` | `Payment` | 승인 금액은 0 보다 커야 함 | 금액을 `OrderFacade` 에 묻고 `PaymentCompletedEvent` 발행 |
-| `shipping` | `Shipping` | READY → SHIPPED → DELIVERED | `OrderPaidEvent` 를 받아 배송 생성 |
+| `shipping` | `Shipping` | READY → SHIPPED → DELIVERED | `OrderPaidEvent` 를 커밋 이후에 받아 배송 생성 |
 
-값 타입은 `core-shared` 에 있다. `Money`, `Email`, `Address` 와 상태 enum. 각 컨텍스트는 다른 컨텍스트를 ID(`memberId`, `orderId`)로만 안다.
-전체 흐름은 `core-api` 의 `OrderFlowTest` 가 검증한다.
+값 타입은 소유자가 정한다. 컨텍스트 사이 계약에 실리는 `Money`, `Address` 만 `shared` 에 있고, `Email`, `PaymentMethod`, 상태 enum 은
+각 컨텍스트의 `domain` 에 있다. 각 컨텍스트는 다른 컨텍스트를 ID(`memberId`, `orderId`)로만 안다.
+전체 흐름은 `OrderFlowTest`, 결제와 주문의 원자성은 `PaymentOrderAtomicityTest` 가 검증한다.
 
 ## 핵심 규칙
 
-- `domain` 은 Spring, JPA, 다른 계층을 모른다.
+- `domain` 은 Spring, JPA, 다른 계층을 모른다. 여러 애그리거트에 걸친 규칙은 `*Policy` 에 둔다.
 - `@Transactional` 은 `application` 에만 있다.
-- 컨텍스트끼리 직접 의존하지 않는다. `*Facade` 와 `*Event` 로만.
+- 컨텍스트끼리 직접 의존하지 않는다. `*Facade` 와 `*Event` 로만. Facade 는 모델이 아니라 판단 결과를 돌려준다.
+- 함께 바뀌어야 하는 컨텍스트 간 처리는 같은 트랜잭션으로, 확정 뒤의 부가 처리만 커밋 이후로 받는다.
 
 전체 규칙과 이유는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). 구조 규칙은 `./gradlew test` 의 `ArchitectureRules` 가 검사한다.
 
@@ -139,7 +158,7 @@ BLOCK 이면 고치거나 ADR 로 예외를 남긴 뒤 리뷰를 요청한다. �
 
 | 문서 | 언제 보는가 |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 코드를 어디에 둘지, 규칙을 어겨야 할 때, 새 컨텍스트를 만들 때, 경계가 맞는지 점검할 때 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 설계 원칙, 코드를 어디에 둘지, 규칙을 어겨야 할 때, 새 컨텍스트를 만들 때, 경계가 맞는지 점검할 때 |
 | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | 에러 코드를 추가하거나 예외를 던질 때, 오류 응답 형식을 알아야 할 때 |
-| [docs/SCALING.md](docs/SCALING.md) | 트래픽·조직이 커져 구조를 바꿔야 하는지 판단할 때 |
+| [docs/SCALING.md](docs/SCALING.md) | 트래픽·조직이 커져 구조를 바꿔야 하는지, 새 기능을 별도 애플리케이션으로 만들지, 다른 앱과 연동할 때 |
 | [docs/REVIEW_AGENT.md](docs/REVIEW_AGENT.md) | 코드리뷰 요청 전 `/arch-review` 를 돌릴 때, 결과를 해석할 때, 프롬프트를 바꿀 때 |

@@ -29,16 +29,17 @@ Content-Type: application/problem+json
 
 ## 구조
 
-에러 코드는 어휘이고 ProblemDetail 은 표현이다. 어휘는 예외를 던지는 가장 아래 모듈인 `core-domain` 에, 표현은 `core-api` 에 있다.
-`core-shared` 에는 두지 않는다. 그 모듈은 record 와 enum 만 담고, `CoreException` 은 둘 다 아니기 때문이다.
+에러 코드는 어휘이고 ProblemDetail 은 표현이다. 둘 다 `core-api` 모듈에 있지만 패키지가 다르다. 어휘(`support.error`)는 예외를
+던지는 가장 안쪽 계층인 domain 이 쓰므로 프레임워크를 모르고(R-01), 표현(`support.web`)은 Spring MVC 에 의존한다.
+`shared` 에는 두지 않는다. 그 패키지는 record 와 enum 만 담고, `CoreException` 은 둘 다 아니기 때문이다.
 
 ```
-core-domain  com.meteor.support.error
+support.error  (프레임워크를 모른다. domain 이 던진다)
   ErrorCode (enum)         코드 문자열 + HTTP 상태(int) + 제목 + 로그 레벨
   CoreException            domain, application, storage, clients 어디서든 던질 수 있는 유일한 예외. errorCode + detail(선택) + properties
   LogLevel                 로깅 프레임워크에 의존하지 않기 위한 자체 enum
 
-core-api     com.meteor.support.web
+support.web    (Spring MVC 표현 계층)
   ProblemDetails           ErrorCode / CoreException → ProblemDetail 렌더링. fromStatus() 로 프레임워크 오류에 공통 코드 선택
   ErrorCodeLogger          에러 코드의 로그 레벨로 기록
   ApiControllerAdvice      모든 예외 → ProblemDetail. CoreException 은 코드대로, Spring MVC 표준 예외는 fromStatus() 코드로,
@@ -56,7 +57,7 @@ core-api     com.meteor.support.web
 |---|---|---|
 | `C` | 공통. 특정 컨텍스트에 속하지 않는 오류, Spring MVC 표준 오류, VO 검증 실패 | `C001` 400, `C002` 404, `C003` 405, `C004` 415, `C999` 500 |
 | `M` | 회원 | `M001` 없음 (404), `M002` 이미 탈퇴 (409), `M003` 비활성 (409) |
-| `O` | 주문 | `O001` 없음 (404), `O002` 결제 불가 상태 (409), `O003` 취소 불가 상태 (409) |
+| `O` | 주문 | `O001` 없음 (404), `O002` 결제 불가 상태 (409), `O003` 취소 불가 상태 (409), `O004` 결제 대기 주문 한도 초과 (409) |
 | `P` | 결제 | `P001` 없음 (404) |
 | `S` | 배송 | `S001` 없음 (404), `S002` 허용되지 않는 상태 전이 (409) |
 
@@ -85,10 +86,11 @@ core-api     com.meteor.support.web
 
 ## 사용하기
 
-**규칙 위반은 애그리거트가 던진다.** 상태 전이 규칙은 도메인에 있으므로 예외도 거기서 나온다.
+**규칙 위반은 애그리거트가 던진다.** 상태 전이 규칙은 도메인에 있으므로 예외도 거기서 나온다. 여러 애그리거트에 걸친 규칙은
+`*Policy` 가 던진다(`OrderLimitPolicy` → `O004`).
 
 ```java
-// Order (core-domain)
+// Order (order.domain)
 public void cancel() {
     if (status != OrderStatus.CREATED) {
         throw new CoreException(ErrorCode.ORDER_NOT_CANCELLABLE).property("orderId", id).property("orderStatus", status);
@@ -100,7 +102,7 @@ public void cancel() {
 **없는 리소스는 UseCase 가 던진다.** 조회 결과가 없는 것은 도메인 규칙이 아니라 흐름의 문제다.
 
 ```java
-// OrderUseCase (core-api)
+// OrderUseCase (order.application)
 Order order = orderRepository.findById(orderId)
     .orElseThrow(() -> new CoreException(ErrorCode.ORDER_NOT_FOUND).property("orderId", orderId));
 ```
@@ -115,7 +117,7 @@ throw new CoreException(ErrorCode.ORDER_ALREADY_PAID, "paidAt=" + order.getPaidA
 (`type`, `title`, `status`, `detail`, `instance`)은 `CoreException.property()` 가 거부한다. 주문 상태를 싣고 싶으면 `status` 가 아니라
 `orderStatus` 처럼 쓴다.
 
-**값 검증 실패는 VO 가 던진다.** `core-shared` 의 VO 는 외부 의존이 없어 `IllegalArgumentException` 을 던지고, 어드바이스가 `C001` 과
+**값 검증 실패는 VO 가 던진다.** VO(`shared` 와 각 컨텍스트 domain 의 record)는 외부 의존이 없어 `IllegalArgumentException` 을 던지고, 어드바이스가 `C001` 과
 메시지로 응답한다. 요청 DTO 가 Command 로 바뀌는 시점에 `Email.of(...)` 가 실패하면 UseCase 에 들어가기 전에 400 이 나간다.
 
 **외부 연동 실패는 어댑터가 감싼다.** `clients` 어댑터가 Feign 예외를 받아 에러 코드로 바꾼다. 원인 예외는 로그에 남기고 응답에는 노출하지 않는다.
