@@ -29,8 +29,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <pre>
  * 회원 가입 → 주문(MemberFacade 로 회원 확인) → 결제(OrderFacade 로 금액 조회)
- *   → PaymentCompletedEvent → 주문 PAID → OrderPaidEvent → 배송 READY → SHIPPED → DELIVERED
+ *   → PaymentCompletedEvent → 주문 PAID (결제와 같은 트랜잭션)
+ *   → 커밋 → OrderPaidEvent → 배송 READY (커밋 이후 부가 처리) → SHIPPED → DELIVERED
  * </pre>
+ *
+ * 결제와 주문 PAID 가 함께 롤백되는지는 {@link PaymentOrderAtomicityTest} 가 확인한다.
  */
 class OrderFlowTest extends ContextTest {
 
