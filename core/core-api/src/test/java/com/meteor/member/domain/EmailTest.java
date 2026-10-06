@@ -1,4 +1,4 @@
-package com.meteor.shared;
+package com.meteor.member.domain;
 
 import org.junit.jupiter.api.Test;
 

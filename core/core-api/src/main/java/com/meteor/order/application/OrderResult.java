@@ -1,9 +1,9 @@
 package com.meteor.order.application;
 
 import com.meteor.order.domain.Order;
+import com.meteor.order.domain.OrderStatus;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
-import com.meteor.shared.OrderStatus;
 
 public record OrderResult(Long id, Long memberId, String productName, int quantity, Money unitPrice, Money totalAmount,
         Address shippingAddress, OrderStatus status) {

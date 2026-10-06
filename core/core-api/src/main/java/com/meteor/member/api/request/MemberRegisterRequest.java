@@ -1,7 +1,7 @@
 package com.meteor.member.api.request;
 
 import com.meteor.member.application.MemberRegisterCommand;
-import com.meteor.shared.Email;
+import com.meteor.member.domain.Email;
 import jakarta.validation.constraints.NotBlank;
 
 /**

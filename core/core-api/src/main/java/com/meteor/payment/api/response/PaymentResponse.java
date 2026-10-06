@@ -1,7 +1,7 @@
 package com.meteor.payment.api.response;
 
 import com.meteor.payment.application.PaymentResult;
-import com.meteor.shared.PaymentMethod;
+import com.meteor.payment.domain.PaymentMethod;
 
 public record PaymentResponse(Long id, Long orderId, long amount, PaymentMethod method) {
 

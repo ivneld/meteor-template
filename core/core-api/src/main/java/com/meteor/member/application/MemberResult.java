@@ -1,8 +1,8 @@
 package com.meteor.member.application;
 
+import com.meteor.member.domain.Email;
 import com.meteor.member.domain.Member;
-import com.meteor.shared.Email;
-import com.meteor.shared.MemberStatus;
+import com.meteor.member.domain.MemberStatus;
 
 public record MemberResult(Long id, Email email, String name, MemberStatus status) {
 

@@ -1,4 +1,4 @@
-package com.meteor.shared;
+package com.meteor.member.domain;
 
 public enum MemberStatus {
 

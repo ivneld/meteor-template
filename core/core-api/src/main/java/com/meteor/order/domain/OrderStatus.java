@@ -1,4 +1,4 @@
-package com.meteor.shared;
+package com.meteor.order.domain;
 
 public enum OrderStatus {
 

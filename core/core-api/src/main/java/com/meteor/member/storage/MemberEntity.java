@@ -1,8 +1,8 @@
 package com.meteor.member.storage;
 
+import com.meteor.member.domain.Email;
 import com.meteor.member.domain.Member;
-import com.meteor.shared.Email;
-import com.meteor.shared.MemberStatus;
+import com.meteor.member.domain.MemberStatus;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

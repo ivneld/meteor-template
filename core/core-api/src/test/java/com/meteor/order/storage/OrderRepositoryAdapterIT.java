@@ -2,9 +2,9 @@ package com.meteor.order.storage;
 
 import com.meteor.ContextTest;
 import com.meteor.order.domain.Order;
+import com.meteor.order.domain.OrderStatus;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
-import com.meteor.shared.OrderStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

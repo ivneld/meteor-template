@@ -2,7 +2,6 @@ package com.meteor.order.domain;
 
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
-import com.meteor.shared.OrderStatus;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
 import org.junit.jupiter.api.Test;

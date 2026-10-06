@@ -1,7 +1,6 @@
 package com.meteor.shipping.domain;
 
 import com.meteor.shared.Address;
-import com.meteor.shared.ShippingStatus;
 import com.meteor.support.error.CoreException;
 import org.junit.jupiter.api.Test;
 

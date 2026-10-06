@@ -1,7 +1,6 @@
 package com.meteor.payment.domain;
 
 import com.meteor.shared.Money;
-import com.meteor.shared.PaymentMethod;
 
 /**
  * 결제 애그리거트. 주문은 orderId 로만 참조한다. 승인 금액은 주문 컨텍스트가 OrderFacade 로 알려준 값이다.
