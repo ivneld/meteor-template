@@ -9,11 +9,11 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OrderRepositoryAdapterIT extends ContextTest {
+class OrderRepositoryIT extends ContextTest {
 
     private final OrderRepository orderRepository;
 
-    OrderRepositoryAdapterIT(OrderRepository orderRepository) {
+    OrderRepositoryIT(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
     }
 

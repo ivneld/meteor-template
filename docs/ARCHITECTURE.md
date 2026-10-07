@@ -76,7 +76,7 @@ support/*       logging, monitoring
 com.meteor.<context>.domain        애그리거트, *Policy, 그 컨텍스트만 쓰는 값 타입(enum, record)
 com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event, *Listener, *Query
 com.meteor.<context>.api           *Controller, request/*, response/*
-com.meteor.<context>.storage       *Repository(public), *Entity, *JpaRepository, *RepositoryAdapter(package-private)
+com.meteor.<context>.storage       *Repository(public 클래스. 엔티티 ↔ 애그리거트 변환을 가두는 어댑터), *Entity, *JpaRepository(package-private)
 com.meteor.<context>.clients       외부 연동 어댑터
 com.meteor.shared                  컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실리는 값 타입
 com.meteor.support                 컨텍스트에 속하지 않는 공통 영역
@@ -93,7 +93,7 @@ com.meteor.support                 컨텍스트에 속하지 않는 공통 영�
 | `api` | HTTP ↔ Command/Result 변환. 엔드포인트 하나는 UseCase 메서드 하나 호출 | `@Transactional`, 애그리거트·저장소 접근, VO 연산 |
 | `application` | 유스케이스 흐름. 꺼내고, 도메인 메서드를 부르고, 저장한다. `@Transactional` 의 유일한 자리 | 도메인 상태로 분기, 다른 UseCase 호출 |
 | `domain` | 모든 규칙과 상태 전이. 애그리거트, 여러 애그리거트에 걸친 규칙(`*Policy`), 그 컨텍스트의 값 타입 | Spring, JPA, 리포지토리, `*Service` 접미어 |
-| `storage` / `clients` | Repository 인터페이스를 소유하고 구현한다. 엔티티 ↔ 도메인 변환 | 비즈니스 규칙, 트랜잭션 경계 |
+| `storage` / `clients` | `*Repository` 클래스가 Spring Data 를 감싸 엔티티 ↔ 도메인 변환을 가둔다 | 비즈니스 규칙, 트랜잭션 경계 |
 
 ### 값 타입의 자리
 
@@ -117,7 +117,7 @@ com.meteor.support                 컨텍스트에 속하지 않는 공통 영�
 ### 영속화 결정
 
 JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다.** 애그리거트는 순수 자바로 `<context>.domain` 에, JPA 엔티티는
-`<context>.storage` 에 package-private 으로 있고, 둘 사이 변환은 같은 패키지의 `*RepositoryAdapter` 가 한다. 둘이 같은 모듈에
+`<context>.storage` 에 package-private 으로 있고, 둘 사이 변환은 같은 패키지의 `*Repository` 클래스가 한다. 둘이 같은 모듈에
 있어도 엔티티는 package-private 이라 storage 밖에서 보이지 않고(R-08), 애그리거트가 JPA 를 모르는 것은 R-01 이 지킨다. 그 결과
 JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
 
@@ -145,7 +145,7 @@ Spring Data JDBC 로 `storage` 패키지만 교체해도 된다. JPA 어노테�
 | R-05 | `domain` 에 `*Service` 접미어 금지. `application` 의 클래스는 `*UseCase`, `*Command`, `*Result`, `*Facade`, `*Event`, `*Listener`, `*Query` 중 하나 | "로직 있는 서비스"와 "트랜잭션만 묶는 서비스"가 공존하는 상황을 이름에서부터 막는다 |
 | R-06 | `storage`, `clients` 어댑터는 `application`, `api` 에 의존하지 않는다 | 어댑터는 저장·연동의 구현일 뿐이며 흐름을 알면 안 된다 |
 | R-07 | 컨텍스트끼리 직접 의존하지 않는다. 허용 통로는 상대 컨텍스트의 `*Facade` 와 `*Event` 뿐 | 도메인끼리 얽히지 않게 한다. 상대의 애그리거트·상태 enum 을 import 할 수 없으므로 상대 규칙을 흉내 내 분기하는 코드가 생기지 않는다 |
-| R-08 | JPA 엔티티는 `storage` 에만 있고 밖에서 참조하지 않는다 | 영속 모델이 API 계약이나 도메인이 되는 것을 막는다. 변환은 어댑터 안에서 끝나고, application 은 public `*Repository` 인터페이스만 본다 |
+| R-08 | JPA 엔티티는 `storage` 에만 있고 밖에서 참조하지 않는다 | 영속 모델이 API 계약이나 도메인이 되는 것을 막는다. 변환은 `*Repository` 클래스 안에서 끝나고, application 은 그 클래스만 본다. 영속화 기술은 JPA 로 고정이므로 별도 인터페이스는 두지 않는다 |
 | R-09 | `shared` 에는 record 와 enum 만 있고, 다른 패키지와 프레임워크에 의존하지 않는다 | 모든 컨텍스트가 참조하므로 의존이 생기면 전파된다. 무엇을 둘지는 [값 타입의 자리](#값-타입의-자리)가 정한다 |
 | R-10 | `*Facade` 의 public 메서드는 void, 원시 타입, `java.lang`, `shared` 의 값만 돌려준다 | Facade 가 모델이나 상태 enum 을 내주면 판단이 호출자에게 넘어가 규칙이 경계 밖으로 샌다. 판단은 소유 컨텍스트가 하고 결과만 돌려준다 (S-10) |
 
@@ -255,8 +255,8 @@ VO 는 외부 의존이 없으므로 생성자의 검증 실패는 `IllegalArgum
 
 1. `<context>.domain` 에 애그리거트를 두고 순수 단위 테스트를 같이 쓴다. 그 컨텍스트만 쓰는 enum·record 도 여기에 둔다.
    상태 전이나 정책이 없는 기능이면 단순한 모델로 시작한다(S-02).
-2. `<context>.storage` 에 `*Repository`(public 인터페이스, 도메인 객체를 주고받음), `*Entity`, `*JpaRepository`,
-   `*RepositoryAdapter`(모두 package-private)를 둔다. 테이블 이름은 컨텍스트 접두어. 어댑터 왕복 테스트(`*RepositoryAdapterIT`)를 같이 쓴다.
+2. `<context>.storage` 에 `*Repository`(public 클래스. Spring Data 를 감싸 도메인 객체만 주고받음), `*Entity`, `*JpaRepository`
+   (package-private)를 둔다. 테이블 이름은 컨텍스트 접두어. 왕복 테스트(`*RepositoryIT`)를 같이 쓴다.
 3. `<context>.application` 의 `*UseCase`, `*Command`, `*Result` 와 `<context>.api` 의 컨트롤러·DTO 를 둔다.
 4. 다른 컨텍스트와 협력이 필요하면 [컨텍스트 간 협력 고르기](#컨텍스트-간-협력-고르기) 표에서 통로를 고른다. 직접 import 는 R-07 이 막는다.
    - 즉시 답이 필요한 질의: 상대 컨텍스트의 `application` 에 `*Facade` 를 둔다. 데이터가 아니라 판단 결과를 돌려준다(R-10, S-10).

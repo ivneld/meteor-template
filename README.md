@@ -41,8 +41,8 @@ core-api/src/main/java/com/meteor/order
 ├── domain        Order(애그리거트), OrderStatus, OrderLimitPolicy        ← 규칙은 여기에만
 ├── application   OrderUseCase, OrderFacade, OrderPaidEvent, OrderEventListener
 ├── api           OrderController, request/, response/
-└── storage       OrderRepository(public)
-                  OrderEntity, OrderJpaRepository, OrderRepositoryAdapter (package-private)
+└── storage       OrderRepository(public 클래스, 엔티티 ↔ 애그리거트 변환)
+                  OrderEntity, OrderJpaRepository (package-private)
 ```
 
 ```
@@ -51,7 +51,8 @@ core-api/src/main/java/com/meteor/order
          └───────────┴────────────┴───────────┴──► shared, support.error
 ```
 
-`domain` 은 Spring 과 JPA 를 모른다. `storage` 는 도메인 객체를 주고받는 `*Repository` 를 소유·구현하므로 도메인에 의존한다.
+`domain` 은 Spring 과 JPA 를 모른다. `storage` 의 `*Repository` 는 Spring Data 를 감싸 도메인 객체만 주고받으므로 도메인에 의존한다.
+영속화 기술은 JPA 로 고정이라 `*Repository` 위에 별도 인터페이스를 두지 않는다.
 계층이 한 모듈에 있으므로 이 방향은 Gradle 이 아니라 ArchUnit(R-01 ~ R-10)이 강제한다. 같은 저장소에 배치·어드민 같은 두 번째 실행
 모듈이 생기면 그때 `domain` 패키지를 모듈로 추출한다([SCALING.md](docs/SCALING.md)).
 

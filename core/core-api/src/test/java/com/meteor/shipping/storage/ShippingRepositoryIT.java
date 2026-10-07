@@ -7,11 +7,11 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ShippingRepositoryAdapterIT extends ContextTest {
+class ShippingRepositoryIT extends ContextTest {
 
     private final ShippingRepository shippingRepository;
 
-    ShippingRepositoryAdapterIT(ShippingRepository shippingRepository) {
+    ShippingRepositoryIT(ShippingRepository shippingRepository) {
         this.shippingRepository = shippingRepository;
     }
 
