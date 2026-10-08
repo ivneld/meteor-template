@@ -29,17 +29,17 @@ Content-Type: application/problem+json
 
 ## 구조
 
-에러 코드는 어휘이고 ProblemDetail 은 표현이다. 어휘(`support.error`)는 예외를 던지는 가장 안쪽 계층인 domain 이 쓰므로 core-domain
-모듈에 있고 프레임워크를 모른다(R-01). 표현(`support.web`)은 core-api 모듈에 있고 Spring MVC 에 의존한다.
+에러 코드는 어휘이고 ProblemDetail 은 표현이다. 둘 다 core-api 모듈에 있지만 패키지가 다르다. 어휘(`support.error`)는 예외를 던지는
+가장 안쪽 계층인 domain 이 쓰므로 프레임워크를 모르고(R-01), 표현(`support.web`)은 Spring MVC 에 의존한다.
 `shared` 에는 두지 않는다. 그 패키지는 record 와 enum 만 담고, `CoreException` 은 둘 다 아니기 때문이다.
 
 ```
-support.error  (core-domain. 프레임워크를 모른다. domain 이 던진다)
+support.error  (프레임워크를 모른다. domain 이 던진다)
   ErrorCode (enum)         코드 문자열 + HTTP 상태(int) + 제목 + 로그 레벨
   CoreException            domain, application, storage, clients 어디서든 던질 수 있는 유일한 예외. errorCode + detail(선택) + properties
   LogLevel                 로깅 프레임워크에 의존하지 않기 위한 자체 enum
 
-support.web    (core-api. Spring MVC 표현 계층)
+support.web    (Spring MVC 표현 계층)
   ProblemDetails           ErrorCode / CoreException → ProblemDetail 렌더링. fromStatus() 로 프레임워크 오류에 공통 코드 선택
   ErrorCodeLogger          에러 코드의 로그 레벨로 기록
   ApiControllerAdvice      모든 예외 → ProblemDetail. CoreException 은 코드대로, Spring MVC 표준 예외는 fromStatus() 코드로,
