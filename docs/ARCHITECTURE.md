@@ -75,29 +75,32 @@ api 전용 record 로 푼다. 유스케이스가 돌려준 애그리거트에서
 ## 계층과 모듈
 
 ```
+core-enum       컨텍스트마다 enums 패키지(도메인의 상태·종류 enum). 어떤 모듈·라이브러리에도 의존하지 않는다. 에러 어휘는 두지 않는다
 core-api        유일한 실행 모듈. 컨텍스트마다 domain / repository / application / api 패키지 + shared + support.error, support.web 등
 storage/db-core 컨텍스트마다 storage 패키지(JPA 엔티티, Spring Data 인터페이스) + 저장소 인프라(DataSource, JPA 설정, BaseEntity).
-                도메인을 모른다. 상태는 문자열, 값 객체는 컬럼으로 저장한다
+                도메인을 모른다. enum 은 core-enum 의 것을 @Enumerated(STRING) 컬럼으로, 값 객체는 컬럼으로 펼쳐 저장한다
 clients/*       외부 시스템 어댑터
 support/*       logging, monitoring
 ```
 
 ```
-core-api ──► storage/db-core        (storage 는 아무 모듈에도 의존하지 않는다)
+core-api ──► storage/db-core ──► core-enum
+   └─────────────────────────────▲
 ```
 
 ```
         api ──► application ──► domain ◄── repository ──► storage
-         │           │            │             │
-         └───────────┴────────────┴─────────────┴──► shared, support.error
+         │           │            │             │            │
+         └───────────┴────────────┴─────────────┴────────────┴──► enums (core-enum)
+                     └────────────┴─────────────┴──► shared, support.error
 ```
 
-컨텍스트 하나는 패키지 `com.meteor.<context>` 하나다. JPA 엔티티와 Spring Data 인터페이스(`storage`)만 storage/db-core 모듈에 있고,
-`domain`, `repository`, `application`, `api` 는 core-api 에 있다. 패키지 이름이 같으므로 IDE 에서는 한 트리로 보이고, 나중에 다른
+컨텍스트 하나는 패키지 `com.meteor.<context>` 하나다. enum(`enums`)은 core-enum, JPA 엔티티와 Spring Data 인터페이스(`storage`)는
+storage/db-core 모듈에 있고, `domain`, `repository`, `application`, `api` 는 core-api 에 있다. 패키지 이름이 같으므로 IDE 에서는 한 트리로 보이고, 나중에 다른
 애플리케이션과 연동하거나 떼어낼 때도 이 패키지와 이 컨텍스트 접두어의 테이블이 단위가 된다.
 
-모듈 의존은 `core-api → storage/db-core` 한 방향이다. storage 는 도메인을 모르므로 엔티티는 상태를 문자열로, 값 객체는 컬럼으로 저장하고,
-core-api 의 `repository` 어댑터가 엔티티를 애그리거트로 바꾼다. storage 가 도메인·application·api 를 모른다는 것은 Gradle 이 컴파일
+모듈 의존은 `core-api → storage/db-core → core-enum` 한 방향이다. storage 는 도메인을 모르지만 core-enum 은 알므로 상태는 enum 컬럼으로,
+값 객체는 컬럼으로 펼쳐 저장하고, core-api 의 `repository` 어댑터가 엔티티를 애그리거트로 바꾼다. storage 가 도메인·application·api 를 모른다는 것은 Gradle 이 컴파일
 단계에서 막는다. 모듈로 막을 수 없는 세부 규칙(domain 의 순수성, 컨텍스트 간 통로, api 의 의존 범위, 엔티티가 어댑터 밖으로 새지 않는 것)은
 ArchUnit(`ArchitectureRules`)이 `./gradlew test` 에서 잡는다. 같은 저장소에 배치·어드민 같은 두 번째 실행 모듈이 생겨 도메인을 함께 써야
 하면, 그때 `domain`, `repository`, `shared`, `support.error` 를 모듈로 추출한다. R-01 이 domain 의 의존을 막아 두었으므로 파일 이동으로 끝난다.
@@ -122,14 +125,15 @@ enum 을 제외한 도메인 타입을 두지 않는다(R-11).
 
 ### 패키지 규약
 
-컨텍스트가 계층보다 위에 온다. `storage` 패키지만 storage/db-core 모듈에 있고 나머지는 core-api 에 있다.
+컨텍스트가 계층보다 위에 온다. `enums` 는 core-enum, `storage` 는 storage/db-core, 나머지는 core-api 모듈에 있다.
 
 ```
-com.meteor.<context>.domain        애그리거트, 도메인 서비스(*Policy, *DomainService), 그 컨텍스트만 쓰는 값 타입(enum, record)   (core-api)
+com.meteor.<context>.enums         그 컨텍스트의 상태·종류 enum                                                                (core-enum)
+com.meteor.<context>.domain        애그리거트, 도메인 서비스(*Policy, *DomainService), 그 컨텍스트만 쓰는 값 객체(record)          (core-api)
 com.meteor.<context>.repository    *Repository. storage 의 Spring Data 를 감싸 엔티티 ↔ 애그리거트 변환을 가두는 어댑터             (core-api)
 com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event, *Listener, *Query, *View                      (core-api)
 com.meteor.<context>.api           *Controller, request/*, response/*                                                          (core-api)
-com.meteor.<context>.storage       *Entity(public), *JpaRepository(public). 도메인을 모르며 상태는 문자열 컬럼                   (storage/db-core)
+com.meteor.<context>.storage       *Entity(public), *JpaRepository(public). 도메인을 모르며 상태는 enum 컬럼                     (storage/db-core)
 com.meteor.<context>.clients       외부 연동 어댑터                                                                             (clients/*)
 com.meteor.shared                  컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실리는 값 타입                                (core-api)
 com.meteor.support                 컨텍스트에 속하지 않는 공통 영역
@@ -145,35 +149,39 @@ com.meteor.support                 컨텍스트에 속하지 않는 공통 영�
 |---|---|---|
 | `api` | HTTP 요청 → Command, 애그리거트 → 응답 DTO 변환. 엔드포인트 하나는 UseCase 메서드 하나 호출 | `@Transactional`, 저장소·Facade·도메인 서비스 접근, 애그리거트의 상태 변경 메서드 호출, DTO 필드에 enum 외 도메인 타입 |
 | `application` | 유스케이스 흐름. 꺼내고, 도메인 메서드를 부르고, 저장한다. `@Transactional` 의 유일한 자리. 결과는 애그리거트 그대로, 또는 필요할 때만 `*Result`/`*View`·원시 타입 | 도메인 상태로 분기, 다른 UseCase 호출 |
-| `domain` | 모든 규칙과 상태 전이. 애그리거트, 여러 애그리거트에 걸친 규칙(`*Policy`), 그 컨텍스트의 값 타입 | Spring, JPA, 리포지토리, `*Service` 접미어 |
+| `enums` | 그 컨텍스트의 상태·종류 enum. 모든 계층과 storage 가 같은 타입을 쓴다 | 다른 모듈 의존, 로직 |
+| `domain` | 모든 규칙과 상태 전이. 애그리거트, 여러 애그리거트에 걸친 규칙(`*Policy`), 그 컨텍스트의 값 객체 | Spring, JPA, 리포지토리, `*Service` 접미어 |
 | `repository` | `*Repository` 어댑터가 storage 의 Spring Data 를 감싸 엔티티 ↔ 애그리거트 변환을 가둔다 | 비즈니스 규칙, 트랜잭션 경계, 엔티티를 밖으로 내보내기 |
 | `storage` / `clients` | JPA 엔티티와 Spring Data 인터페이스, 외부 연동 | 도메인 참조, 비즈니스 규칙, 트랜잭션 경계 |
 
 ### 값 타입의 자리
 
-값 타입은 종류(enum 인가 record 인가)가 아니라 **소유자**로 자리를 정한다.
+enum 은 종류로, record 는 소유자로 자리를 정한다.
 
 ```
 새 타입이 생겼다
   │
-  ├─ 식별자가 있고 상태가 바뀐다 ──▶ 애그리거트 (<context>.domain)
+  ├─ 식별자가 있고 상태가 바뀐다 ──▶ 애그리거트 (<context>.domain, core-api)
   │
-  └─ 값이다 (enum, record)
+  ├─ enum 이다 ──▶ <context>.enums (core-enum)     예: OrderStatus, PaymentMethod
+  │                storage 의 엔티티도 같은 타입으로 저장하므로 모듈이 따로 있다
+  │
+  └─ record 다
        │
-       ├─ 한 컨텍스트에서만 의미가 있다 ──▶ <context>.domain     예: OrderStatus, PaymentMethod, Email
+       ├─ 한 컨텍스트에서만 의미가 있다 ──▶ <context>.domain (core-api)     예: Email
        │
-       └─ 컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실린다 ──▶ shared     예: Money, Address
+       └─ 컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실린다 ──▶ shared (core-api)     예: Money, Address
 ```
 
-처음에는 컨텍스트 안에 두고, 실제로 경계를 넘을 때 `shared` 로 올린다. 여러 곳이 이미 참조한 뒤에 `shared` 에서 내리는 것은 어렵다.
-상태 enum 이 소유 컨텍스트에 있으므로 다른 컨텍스트가 그 상태로 분기하는 코드는 R-07 이 막는다.
+record 는 처음에는 컨텍스트 안에 두고, 실제로 경계를 넘을 때 `shared` 로 올린다. 여러 곳이 이미 참조한 뒤에 `shared` 에서 내리는 것은
+어렵다. enum 은 모듈이 달라도 패키지가 소유 컨텍스트 아래(`<context>.enums`)이므로 다른 컨텍스트가 그 상태로 분기하는 코드는 R-07 이 막는다.
 
 ### 영속화 결정
 
 JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다.** 영속화 기술은 JPA 로 고정이다([설계 원칙 5](#5-영속화-기술은-jpa-로-고정한다-엔티티와-애그리거트는-그래도-분리한다)).
 애그리거트는 순수 자바로 core-api 의 `<context>.domain` 에, JPA 엔티티는 storage 모듈의 `<context>.storage` 에 있고, 둘 사이 변환은
-core-api 의 `<context>.repository` 에 있는 `*Repository` 어댑터가 한다. storage 모듈은 도메인을 모르므로 엔티티는 상태를 문자열로, 값 객체를
-컬럼으로 저장하고 어댑터가 enum 과 record 로 조립한다. 어댑터는 Spring Data 인터페이스를 감싼 구체 클래스이며, 저장소 교체를 위한 별도
+core-api 의 `<context>.repository` 에 있는 `*Repository` 어댑터가 한다. storage 모듈은 도메인을 모르지만 core-enum 은 알므로 상태는 enum 컬럼으로, 값 객체는
+컬럼으로 펼쳐 저장하고 어댑터가 record 로 조립한다. 어댑터는 Spring Data 인터페이스를 감싼 구체 클래스이며, 저장소 교체를 위한 별도
 인터페이스는 두지 않는다. 엔티티를 참조할 수 있는 곳은 storage 와 repository 뿐이고(R-08), 애그리거트가 JPA 를 모르는 것은 R-01 이 지킨다.
 그 결과 JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
 
@@ -201,7 +209,7 @@ core-api 의 `<context>.repository` 에 있는 `*Repository` 어댑터가 한다
 | R-06 | `storage`, `repository`, `clients` 는 `application`, `api` 에 의존하지 않는다. `storage` 는 `domain`, `repository`, `shared` 도 모른다 | 저장·연동의 구현일 뿐이며 흐름을 알면 안 된다. storage 모듈이 도메인을 모르는 것은 모듈 의존(core-api → storage)이 1차로 막고 이 규칙이 다시 확인한다 |
 | R-07 | 컨텍스트끼리 직접 의존하지 않는다. 허용 통로는 상대 컨텍스트의 `*Facade` 와 `*Event` 뿐 | 도메인끼리 얽히지 않게 한다. 상대의 애그리거트·상태 enum 을 import 할 수 없으므로 상대 규칙을 흉내 내 분기하는 코드가 생기지 않는다 |
 | R-08 | JPA 엔티티는 `storage` 에만 있고, 밖에서는 `repository` 어댑터만 참조한다 | 영속 모델이 API 계약이나 도메인이 되는 것을 막는다. 변환은 `*Repository` 어댑터 안에서 끝나고, application 은 어댑터가 돌려준 애그리거트만 본다. 영속화 기술은 JPA 로 고정이므로 별도 인터페이스는 두지 않는다 |
-| R-09 | `shared` 에는 record 와 enum 만 있고, 다른 패키지와 프레임워크에 의존하지 않는다 | 모든 컨텍스트가 참조하므로 의존이 생기면 전파된다. 무엇을 둘지는 [값 타입의 자리](#값-타입의-자리)가 정한다 |
+| R-09 | `shared` 에는 record 와 enum 만 있고, `shared` 와 `core-enum` 의 `enums` 는 다른 패키지와 프레임워크에 의존하지 않는다 | 모든 컨텍스트와 storage 가 참조하므로 의존이 생기면 전파된다. 무엇을 둘지는 [값 타입의 자리](#값-타입의-자리)가 정한다 |
 | R-10 | `*Facade` 의 public 메서드는 void, 원시 타입, `java.lang`, `shared` 의 값만 돌려준다 | Facade 가 모델이나 상태 enum 을 내주면 판단이 호출자에게 넘어가 규칙이 경계 밖으로 샌다. 판단은 소유 컨텍스트가 하고 결과만 돌려준다 (S-10) |
 | R-11 | `api` 의 요청·응답 객체는 enum 을 제외한 도메인 타입을 필드로 갖지 않는다 | API 계약이 도메인 모델에 묶이면 둘 중 하나를 못 바꾼다. 값 객체는 원시 타입이나 api 전용 record 로 푼다 |
 
@@ -310,10 +318,10 @@ VO 는 외부 의존이 없으므로 생성자의 검증 실패는 `IllegalArgum
 경계를 어디에 그을지는 [컨텍스트 식별](#컨텍스트-식별) 절의 테스트로 정하고, 같은 절의 "잘못 나누었다는 신호"로 분기마다 점검한다.
 모든 코드는 패키지 `com.meteor.<context>` 아래에 둔다. `storage` 만 storage/db-core 모듈이고 나머지는 core-api 다.
 
-1. `<context>.domain` 에 애그리거트를 두고 순수 단위 테스트를 같이 쓴다. 그 컨텍스트만 쓰는 enum·record 도 여기에 둔다.
-   상태 전이나 정책이 없는 기능이면 단순한 모델로 시작한다(S-02).
-2. storage/db-core 의 `<context>.storage` 에 `*Entity` 와 `*JpaRepository` 를 둔다. 둘 다 public 이고 도메인을 모른다. 상태는 문자열,
-   값 객체는 컬럼으로 저장한다. 테이블 이름은 컨텍스트 접두어.
+1. core-enum 의 `<context>.enums` 에 상태·종류 enum 을 둔다. `<context>.domain` 에 애그리거트를 두고 순수 단위 테스트를 같이 쓴다.
+   그 컨텍스트만 쓰는 record 도 domain 에 둔다. 상태 전이나 정책이 없는 기능이면 단순한 모델로 시작한다(S-02).
+2. storage/db-core 의 `<context>.storage` 에 `*Entity` 와 `*JpaRepository` 를 둔다. 둘 다 public 이고 도메인을 모른다. 상태는 enum
+   컬럼(`@Enumerated(STRING)`), 값 객체는 컬럼으로 저장한다. 테이블 이름은 컨텍스트 접두어.
 3. core-api 의 `<context>.repository` 에 `*Repository` 어댑터를 둔다. Spring Data 를 감싸 엔티티 ↔ 애그리거트 변환을 하고 애그리거트만
    돌려준다. 왕복 테스트(`*RepositoryIT`)를 같이 쓴다.
 4. `<context>.application` 에 `*UseCase`, `*Command` 를, `<context>.api` 에 컨트롤러·DTO 를 둔다. UseCase 는 애그리거트를 그대로
