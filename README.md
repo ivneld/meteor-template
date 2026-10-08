@@ -7,7 +7,7 @@ Spring Boot(Java) 서비스를 팀이 함께 개발하기 위한 템플릿.
 추상화를 두지 않되, JPA 의 간섭 없이 애그리거트·값 객체를 쓰고 그것을 유스케이스 결과로 그대로 쓰기 위해 엔티티와 애그리거트는 분리한다.
 판단 기준은 [설계 원칙](docs/ARCHITECTURE.md#설계-원칙)에 있다.
 
-- 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 컨텍스트(`member`, `order`, `payment`, `shipping` ...) 하나는 `core-api` 안의 폴더 하나다.
+- 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 컨텍스트(`member`, `order`, `payment`, `shipping` ...) 하나는 패키지 `com.meteor.<context>` 하나이고, 그 아래 계층이 세 모듈에 나뉘어 있다.
 - 컨텍스트 안은 `domain / application / api / storage` 네 패키지. 도메인 규칙은 `domain` 에만, 트랜잭션 경계는 `application` 에만 있다.
   애그리거트와 JPA 엔티티는 분리되어 있고 `*Repository` 가 변환한다.
 - 컨텍스트끼리는 ID 와 `*Facade`(판단 결과 반환), `*Event` 로만 협력한다. 이 경계들은 ArchUnit 테스트와 리뷰 에이전트가 강제한다.
@@ -17,10 +17,11 @@ Spring Boot(Java) 서비스를 팀이 함께 개발하기 위한 템플릿.
 ```
 meteor-template
 ├── core
-│   └── core-api        유일한 실행 모듈. 컨텍스트마다 domain / application / api / storage 패키지
-│                       + shared(컨텍스트 간 계약 값) + support(에러 어휘, 웹 설정, 어드바이스)
+│   ├── core-domain     컨텍스트마다 domain 패키지(애그리거트, *Policy, 값 타입) + shared(컨텍스트 간 계약 값) + support.error(에러 어휘).
+│   │                   Spring/JPA 를 모른다. 외부 의존 0
+│   └── core-api        유일한 실행 모듈. 컨텍스트마다 application / api 패키지 + support(웹 설정, 어드바이스)
 ├── storage
-│   └── db-core         저장소 인프라. DataSource, JPA 설정, BaseEntity
+│   └── db-core         컨텍스트마다 storage 패키지(JPA 엔티티, Spring Data, *Repository) + 저장소 인프라(DataSource, JPA 설정, BaseEntity)
 ├── clients
 │   └── client-example  OpenFeign 기반 외부 연동 어댑터 예시
 ├── support
@@ -38,12 +39,13 @@ meteor-template
 ### 컨텍스트 하나의 모양
 
 ```
-core-api/src/main/java/com/meteor/order
-├── domain        Order(애그리거트), OrderStatus, OrderLimitPolicy        ← 규칙은 여기에만
-├── application   OrderUseCase(애그리거트를 그대로 반환. 필요하면 *Result/*View), OrderFacade, OrderPaidEvent, OrderEventListener
-├── api           OrderController, request/, response/
+com.meteor.order
+├── domain        Order(애그리거트), OrderStatus, OrderLimitPolicy        ← 규칙은 여기에만        (core-domain)
+├── application   OrderUseCase(애그리거트를 그대로 반환. 필요하면 *Result/*View), OrderFacade,
+│                 OrderPaidEvent, OrderEventListener                                              (core-api)
+├── api           OrderController, request/, response/                                             (core-api)
 └── storage       OrderRepository(public 클래스, 엔티티 ↔ 애그리거트 변환)
-                  OrderEntity, OrderJpaRepository (package-private)
+                  OrderEntity, OrderJpaRepository (package-private)                                (storage/db-core)
 ```
 
 ```
@@ -54,8 +56,9 @@ core-api/src/main/java/com/meteor/order
 
 `domain` 은 Spring 과 JPA 를 모른다. `storage` 의 `*Repository` 는 Spring Data 를 감싸 도메인 객체만 주고받으므로 도메인에 의존한다.
 영속화 기술은 JPA 로 고정이라 `*Repository` 위에 별도 인터페이스를 두지 않는다.
-계층이 한 모듈에 있으므로 이 방향은 Gradle 이 아니라 ArchUnit(R-01 ~ R-11)이 강제한다. 같은 저장소에 배치·어드민 같은 두 번째 실행
-모듈이 생기면 그때 `domain` 패키지를 모듈로 추출한다([SCALING.md](docs/SCALING.md)).
+모듈 의존은 `core-api → storage/db-core → core-domain` 한 방향이라 domain 의 순수성과 storage 의 격리는 Gradle 이 컴파일 단계에서
+막고, 그 안의 세부 규칙(컨텍스트 간 통로, api 의존 범위 등)은 ArchUnit(R-01 ~ R-11)이 강제한다. 배치·어드민 같은 두 번째 실행 모듈은
+`core-domain` 과 `storage/db-core` 를 그대로 의존하면 된다([SCALING.md](docs/SCALING.md)).
 
 ## 레퍼런스 도메인
 
