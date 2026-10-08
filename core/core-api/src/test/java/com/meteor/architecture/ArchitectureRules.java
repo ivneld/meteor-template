@@ -35,8 +35,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
  * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다.
  *
  * <p>
- * 컨텍스트의 네 계층은 모두 core-api 모듈 안에 있다. 계층 사이 경계는 Gradle 모듈이 아니라 이 규칙들이 강제한다. 특히 domain 이
- * Spring·JPA 를 모른다는 것(R-01)은 컴파일러가 아니라 여기서 잡힌다.
+ * 컨텍스트의 네 계층은 세 모듈에 나뉘어 있다. domain 은 core-domain, storage 는 storage/db-core, application
+ * 과 api 는 core-api. 모듈 의존(core-api → storage → core-domain)이 1차 경계이고, 그 안의 세부 규칙은 이 클래스가
+ * 강제한다. 모든 모듈이 테스트 클래스패스에 있으므로 com.meteor 전체를 한 번에 검사한다.
  */
 @AnalyzeClasses(packages = "com.meteor", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureRules {

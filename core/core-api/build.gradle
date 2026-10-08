@@ -1,9 +1,10 @@
-// 프로젝트에서 유일하게 실행 가능한 모듈. 컨텍스트마다 domain / application / api / storage 패키지가 이 안에 있다.
-// 계층 사이의 경계(domain 순수성, 엔티티 격리, 컨텍스트 간 통로)는 모듈이 아니라 ArchitectureRules(ArchUnit)가 강제한다.
+// 프로젝트에서 유일하게 실행 가능한 모듈. 컨텍스트마다 application / api 패키지가 이 안에 있다.
+// domain 은 core-domain, storage 는 storage/db-core 모듈에 있어 계층 경계 중 일부는 Gradle 이, 나머지는 ArchitectureRules(ArchUnit)가 강제한다.
 bootJar.enabled = true
 jar.enabled = false
 
 dependencies {
+    implementation project(':core:core-domain')
     implementation project(':storage:db-core')
     implementation project(':clients:client-example')
     implementation project(':support:logging')
