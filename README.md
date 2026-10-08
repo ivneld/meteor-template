@@ -9,7 +9,7 @@ Spring Boot(Java) 서비스를 팀이 함께 개발하기 위한 템플릿.
 
 - 배포 단위는 하나, 바운디드 컨텍스트는 여러 개. 컨텍스트(`member`, `order`, `payment`, `shipping` ...) 하나는 `core-api` 안의 폴더 하나다.
 - 컨텍스트 안은 `domain / application / api / storage` 네 패키지. 도메인 규칙은 `domain` 에만, 트랜잭션 경계는 `application` 에만 있다.
-  애그리거트와 JPA 엔티티는 분리되어 있고 어댑터가 변환한다.
+  애그리거트와 JPA 엔티티는 분리되어 있고 `*Repository` 가 변환한다.
 - 컨텍스트끼리는 ID 와 `*Facade`(판단 결과 반환), `*Event` 로만 협력한다. 이 경계들은 ArchUnit 테스트와 리뷰 에이전트가 강제한다.
 
 ## 모듈 구성
@@ -54,7 +54,7 @@ core-api/src/main/java/com/meteor/order
 
 `domain` 은 Spring 과 JPA 를 모른다. `storage` 의 `*Repository` 는 Spring Data 를 감싸 도메인 객체만 주고받으므로 도메인에 의존한다.
 영속화 기술은 JPA 로 고정이라 `*Repository` 위에 별도 인터페이스를 두지 않는다.
-계층이 한 모듈에 있으므로 이 방향은 Gradle 이 아니라 ArchUnit(R-01 ~ R-10)이 강제한다. 같은 저장소에 배치·어드민 같은 두 번째 실행
+계층이 한 모듈에 있으므로 이 방향은 Gradle 이 아니라 ArchUnit(R-01 ~ R-11)이 강제한다. 같은 저장소에 배치·어드민 같은 두 번째 실행
 모듈이 생기면 그때 `domain` 패키지를 모듈로 추출한다([SCALING.md](docs/SCALING.md)).
 
 ## 레퍼런스 도메인

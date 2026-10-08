@@ -29,7 +29,7 @@ public class Shipping {
         return new Shipping(null, orderId, address, ShippingStatus.READY);
     }
 
-    /** 저장소에서 복원한다. storage 어댑터만 호출한다. */
+    /** 저장소에서 복원한다. storage 의 *Repository 만 호출한다. */
     public static Shipping restore(Long id, Long orderId, Address address, ShippingStatus status) {
         return new Shipping(id, orderId, address, status);
     }

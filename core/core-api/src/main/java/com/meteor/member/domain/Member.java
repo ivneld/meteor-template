@@ -27,7 +27,7 @@ public class Member {
         return new Member(null, email, name, MemberStatus.ACTIVE);
     }
 
-    /** 저장소에서 복원한다. storage 어댑터만 호출한다. */
+    /** 저장소에서 복원한다. storage 의 *Repository 만 호출한다. */
     public static Member restore(Long id, Email email, String name, MemberStatus status) {
         return new Member(id, email, name, status);
     }

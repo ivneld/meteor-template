@@ -158,7 +158,7 @@ class ArchitectureRules {
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage(APPLICATION, API)
-        .as("R-06 storage, clients 어댑터는 application, api 에 의존하지 않는다");
+        .as("R-06 storage, clients 는 application, api 에 의존하지 않는다");
 
     @ArchTest
     static final ArchRule R07_contexts_do_not_depend_on_each_other = SlicesRuleDefinition.slices()

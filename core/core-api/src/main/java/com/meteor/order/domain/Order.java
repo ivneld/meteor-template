@@ -44,7 +44,7 @@ public class Order {
         return new Order(null, memberId, productName, quantity, unitPrice, shippingAddress, OrderStatus.CREATED);
     }
 
-    /** 저장소에서 복원한다. storage 어댑터만 호출한다. */
+    /** 저장소에서 복원한다. storage 의 *Repository 만 호출한다. */
     public static Order restore(Long id, Long memberId, String productName, int quantity, Money unitPrice,
             Address shippingAddress, OrderStatus status) {
         return new Order(id, memberId, productName, quantity, unitPrice, shippingAddress, status);

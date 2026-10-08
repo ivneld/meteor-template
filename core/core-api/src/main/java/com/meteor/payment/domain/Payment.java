@@ -29,7 +29,7 @@ public class Payment {
         return new Payment(null, orderId, amount, method);
     }
 
-    /** 저장소에서 복원한다. storage 어댑터만 호출한다. */
+    /** 저장소에서 복원한다. storage 의 *Repository 만 호출한다. */
     public static Payment restore(Long id, Long orderId, Money amount, PaymentMethod method) {
         return new Payment(id, orderId, amount, method);
     }

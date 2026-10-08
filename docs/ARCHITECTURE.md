@@ -77,7 +77,7 @@ api 전용 record 로 푼다. 유스케이스가 돌려준 애그리거트에서
 ```
 core-api        유일한 실행 모듈. 컨텍스트마다 domain / application / api / storage 네 패키지가 이 안에 있다
                 shared(컨텍스트 간 계약 값), support.error(에러 어휘), support.web 등 공통 영역도 여기 있다
-storage/db-core 저장소 인프라. DataSource, JPA 설정, BaseEntity. 엔티티와 어댑터는 두지 않는다
+storage/db-core 저장소 인프라. DataSource, JPA 설정, BaseEntity. 엔티티와 *Repository 는 두지 않는다
 clients/*       외부 시스템 어댑터
 support/*       logging, monitoring
 ```
@@ -121,7 +121,7 @@ enum 을 제외한 도메인 타입을 두지 않는다(R-11).
 com.meteor.<context>.domain        애그리거트, 도메인 서비스(*Policy, *DomainService), 그 컨텍스트만 쓰는 값 타입(enum, record)
 com.meteor.<context>.application   *UseCase, *Command, *Result, *Facade, *Event, *Listener, *Query, *View
 com.meteor.<context>.api           *Controller, request/*, response/*
-com.meteor.<context>.storage       *Repository(public 클래스. 엔티티 ↔ 애그리거트 변환을 가두는 어댑터), *Entity, *JpaRepository(package-private)
+com.meteor.<context>.storage       *Repository(public 클래스. Spring Data 를 감싸고 엔티티 ↔ 애그리거트 변환을 가둔다), *Entity, *JpaRepository(package-private)
 com.meteor.<context>.clients       외부 연동 어댑터
 com.meteor.shared                  컨텍스트 사이 계약(Facade 반환값, Event 필드)에 실리는 값 타입
 com.meteor.support                 컨텍스트에 속하지 않는 공통 영역
@@ -161,10 +161,11 @@ com.meteor.support                 컨텍스트에 속하지 않는 공통 영�
 
 ### 영속화 결정
 
-JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다.** 애그리거트는 순수 자바로 `<context>.domain` 에, JPA 엔티티는
-`<context>.storage` 에 package-private 으로 있고, 둘 사이 변환은 같은 패키지의 `*Repository` 클래스가 한다. 둘이 같은 모듈에
-있어도 엔티티는 package-private 이라 storage 밖에서 보이지 않고(R-08), 애그리거트가 JPA 를 모르는 것은 R-01 이 지킨다. 그 결과
-JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
+JPA 를 쓰되 **도메인 모델로 쓰지 않고 영속 엔진으로만 쓴다.** 영속화 기술은 JPA 로 고정이다([설계 원칙 5](#5-영속화-기술은-jpa-로-고정한다-엔티티와-애그리거트는-그래도-분리한다)).
+애그리거트는 순수 자바로 `<context>.domain` 에, JPA 엔티티는 `<context>.storage` 에 package-private 으로 있고, 둘 사이 변환은
+같은 패키지의 `*Repository` 클래스가 한다. 그 클래스는 Spring Data 인터페이스를 감싼 구체 클래스이며, 저장소 교체를 위한 별도 인터페이스는
+두지 않는다. 둘이 같은 모듈에 있어도 엔티티는 package-private 이라 storage 밖에서 보이지 않고(R-08), 애그리거트가 JPA 를 모르는 것은
+R-01 이 지킨다. 그 결과 JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
 
 | 포기하는 것 (애그리거트 중심 설계가 원래 피하는 것) | 유지하는 것 (영속 모델에 붙는 인프라 기능) |
 |---|---|
@@ -172,11 +173,10 @@ JPA 의 이점 중 일부는 포기하고 일부는 유지한다.
 | 지연 로딩과 연관관계 탐색. 애그리거트는 통째로 로딩한다 | `@Version` 낙관적 락, Envers 감사 이력, 2차 캐시 |
 | cascade. 저장은 애그리거트 단위로 끝난다 | 스키마 매핑과 `validate`, 배치 insert, 방언 추상화 |
 
-멀티테넌트, 감사 이력, 낙관적 락 중 하나라도 필요하면 이 구조를 유지한다. 그런 요구가 없는 작은 서비스는 변환 코드를 없애 주는
-Spring Data JDBC 로 `storage` 패키지만 교체해도 된다. JPA 어노테이션을 애그리거트에 직접 붙이는 방식은 택하지 않는다. 포기한 쪽의
-편의를 되찾는 대가로 경계를 어기기 쉬운 길(`@ManyToOne` 월경, 암묵적 저장)이 함께 돌아오기 때문이다.
+포기하는 쪽은 애그리거트 중심 설계가 원래 피하는 것들이고, 유지하는 쪽은 멀티테넌트·감사 이력·낙관적 락처럼 영속 모델에 붙어야 하는
+인프라 기능이다. 변환 코드는 애그리거트마다 `*Entity` 의 `from` / `apply` / `toDomain` 세 메서드로 고정되어 있어 비용이 예측 가능하다.
 
-`@Version` 을 쓸 때 애그리거트가 트랜잭션을 넘어 전달된다면 `restore()` 에 version 을 포함시켜 어댑터가 복원 시 넘기도록 한다.
+`@Version` 을 쓸 때 애그리거트가 트랜잭션을 넘어 전달된다면 `restore()` 에 version 을 포함시켜 `*Repository` 가 복원 시 넘기도록 한다.
 같은 트랜잭션 안에서 읽고 저장하면 1차 캐시의 엔티티가 버전을 갖고 있으므로 추가 작업이 없다.
 
 ## 구조 규칙 (R)
@@ -188,7 +188,7 @@ Spring Data JDBC 로 `storage` 패키지만 교체해도 된다. JPA 어노테�
 | R-03 | `api` 는 `*UseCase`(와 Command, Query)만 의존한다. `storage`, `clients`, 도메인 서비스(`*Policy`), `*Facade`, `*Listener`, `*Event` 에 의존하지 않는다. UseCase 가 돌려준 애그리거트에서는 getter 만 읽는다 | 컨트롤러가 애그리거트의 상태 변경 메서드를 부르면 트랜잭션 밖에서 상태가 바뀌고 저장이 누락된다. 읽기만 허용하면 애그리거트를 결과로 돌려줘도 안전하다 |
 | R-04 | `*UseCase` 는 다른 `*UseCase` 를 호출하지 않는다 | 트랜잭션 경계가 중첩되지 않게 한다. 공통 흐름은 도메인 서비스나 `*Facade` 로 |
 | R-05 | `domain` 의 서비스는 `*Policy` 나 `*DomainService` 로 이름 짓는다(맨 `*Service` 금지). `application` 의 클래스는 `*UseCase`, `*Command`, `*Result`, `*Facade`, `*Event`, `*Listener`, `*Query`, `*View` 중 하나 | 두 종류의 서비스가 이름만으로 구분되어야 "로직 있는 서비스"와 "트랜잭션만 묶는 서비스"가 섞이지 않는다 |
-| R-06 | `storage`, `clients` 어댑터는 `application`, `api` 에 의존하지 않는다 | 어댑터는 저장·연동의 구현일 뿐이며 흐름을 알면 안 된다 |
+| R-06 | `storage`, `clients` 는 `application`, `api` 에 의존하지 않는다 | 저장·연동의 구현일 뿐이며 흐름을 알면 안 된다 |
 | R-07 | 컨텍스트끼리 직접 의존하지 않는다. 허용 통로는 상대 컨텍스트의 `*Facade` 와 `*Event` 뿐 | 도메인끼리 얽히지 않게 한다. 상대의 애그리거트·상태 enum 을 import 할 수 없으므로 상대 규칙을 흉내 내 분기하는 코드가 생기지 않는다 |
 | R-08 | JPA 엔티티는 `storage` 에만 있고 밖에서 참조하지 않는다 | 영속 모델이 API 계약이나 도메인이 되는 것을 막는다. 변환은 `*Repository` 클래스 안에서 끝나고, application 은 그 클래스만 본다. 영속화 기술은 JPA 로 고정이므로 별도 인터페이스는 두지 않는다 |
 | R-09 | `shared` 에는 record 와 enum 만 있고, 다른 패키지와 프레임워크에 의존하지 않는다 | 모든 컨텍스트가 참조하므로 의존이 생기면 전파된다. 무엇을 둘지는 [값 타입의 자리](#값-타입의-자리)가 정한다 |
@@ -208,7 +208,7 @@ ArchUnit 이 볼 수 없는 규칙. 리뷰 에이전트가 PR 마다 확인한�
 | S-05 | 컨텍스트 간 상태 변경은 이벤트로 전달하고, 트랜잭션은 일관성 요구로 고른다 | 함께 바뀌어야 하는 처리(결제 → 주문 PAID)를 `AFTER_COMMIT` 으로 받음. 반대로 실패해도 되는 부가 처리를 같은 트랜잭션에 묶음 |
 | S-06 | 테이블 쓰기는 소유 컨텍스트만 한다 | 다른 컨텍스트 테이블에 대한 INSERT/UPDATE/DELETE, 다른 컨텍스트 테이블의 FK. 여러 컨텍스트를 가로지르는 **읽기** JOIN 은 `query` 컨텍스트에서만 허용 |
 | S-07 | `AFTER_COMMIT` 리스너는 부가 처리에만 쓰고, 실패를 감지할 수단을 함께 둔다 | 핵심 흐름이 커밋 후 리스너에 의존함. 리스너가 부르는 UseCase 메서드에 `REQUIRES_NEW` 가 없음. 실패가 조용히 사라짐 |
-| S-08 | 어댑터는 변환만 하고 규칙을 갖지 않는다 | storage/clients 안의 비즈니스 분기 |
+| S-08 | `*Repository` 와 `clients` 는 변환만 하고 규칙을 갖지 않는다 | storage/clients 안의 비즈니스 분기 |
 | S-09 | 저장은 명시적이다 | 도메인 객체를 바꾸고 `repository.save()` 를 호출하지 않는 UseCase |
 | S-10 | Facade 는 판단 결과를 돌려준다 (Tell, Don't Ask) | 상태를 문자열·boolean 으로 우회해 내주는 메서드(`getStatusName()`, `isPaid()`)로 호출자가 분기함. R-10 이 타입은 막지만 의미는 사람이 본다 |
 | S-11 | 여러 애그리거트에 걸친 규칙은 `*Policy` 에 둔다 | UseCase 가 저장소 조회 결과(건수, 목록)로 직접 판단함. UseCase 는 사실을 꺼내 Policy 에 넘기기만 한다 |

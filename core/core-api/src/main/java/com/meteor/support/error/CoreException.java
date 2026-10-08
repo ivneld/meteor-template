@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 도메인·애플리케이션·어댑터 어디서든 던질 수 있는 유일한 예외 타입. 무엇이 잘못됐는지, 어떤 HTTP 상태로 응답할지는 {@link ErrorCode} 가
+ * 도메인·애플리케이션·저장소·클라이언트 어디서든 던질 수 있는 유일한 예외 타입. 무엇이 잘못됐는지, 어떤 HTTP 상태로 응답할지는 {@link ErrorCode} 가
  * 결정한다.
  *
  * <pre>
