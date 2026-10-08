@@ -1,13 +1,13 @@
-package com.meteor.shipping.storage;
+package com.meteor.shipping.repository;
 
-import com.meteor.CoreDbContextTest;
+import com.meteor.ContextTest;
 import com.meteor.shared.Address;
 import com.meteor.shipping.domain.Shipping;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ShippingRepositoryIT extends CoreDbContextTest {
+class ShippingRepositoryIT extends ContextTest {
 
     private final ShippingRepository shippingRepository;
 

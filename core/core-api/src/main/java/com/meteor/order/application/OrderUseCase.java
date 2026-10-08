@@ -3,7 +3,7 @@ package com.meteor.order.application;
 import com.meteor.member.application.MemberFacade;
 import com.meteor.order.domain.Order;
 import com.meteor.order.domain.OrderLimitPolicy;
-import com.meteor.order.storage.OrderRepository;
+import com.meteor.order.repository.OrderRepository;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
 

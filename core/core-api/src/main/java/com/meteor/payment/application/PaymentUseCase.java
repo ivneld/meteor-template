@@ -2,7 +2,7 @@ package com.meteor.payment.application;
 
 import com.meteor.order.application.OrderFacade;
 import com.meteor.payment.domain.Payment;
-import com.meteor.payment.storage.PaymentRepository;
+import com.meteor.payment.repository.PaymentRepository;
 import com.meteor.shared.Money;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;

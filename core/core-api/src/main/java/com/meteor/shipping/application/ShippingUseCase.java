@@ -2,7 +2,7 @@ package com.meteor.shipping.application;
 
 import com.meteor.shared.Address;
 import com.meteor.shipping.domain.Shipping;
-import com.meteor.shipping.storage.ShippingRepository;
+import com.meteor.shipping.repository.ShippingRepository;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
 

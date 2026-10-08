@@ -1,18 +1,16 @@
 package com.meteor.member.storage;
 
-import com.meteor.member.domain.Email;
-import com.meteor.member.domain.Member;
-import com.meteor.member.domain.MemberStatus;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
+/**
+ * 회원 영속 모델. 도메인을 모르므로 상태는 문자열로 저장하고, 도메인 객체와의 변환은 core 모듈의 MemberRepository 가 한다.
+ */
 @Entity
 @Table(name = "member")
-class MemberEntity extends BaseEntity {
+public class MemberEntity extends BaseEntity {
 
     @Column(nullable = false, length = 200, unique = true)
     private String email;
@@ -20,27 +18,32 @@ class MemberEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private MemberStatus status;
+    private String status;
 
     protected MemberEntity() {
     }
 
-    static MemberEntity from(Member member) {
-        MemberEntity entity = new MemberEntity();
-        entity.email = member.getEmail().value();
-        entity.name = member.getName();
-        entity.status = member.getStatus();
-        return entity;
+    public MemberEntity(String email, String name, String status) {
+        this.email = email;
+        this.name = name;
+        this.status = status;
     }
 
-    void apply(Member member) {
-        this.status = member.getStatus();
+    public void changeStatus(String status) {
+        this.status = status;
     }
 
-    Member toDomain() {
-        return Member.restore(getId(), Email.of(email), name, status);
+    public String getEmail() {
+        return email;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getStatus() {
+        return status;
     }
 
 }

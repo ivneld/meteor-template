@@ -9,11 +9,10 @@ pluginManagement {
 
 rootProject.name = 'meteor-template'
 
-// core: 컨텍스트(com.meteor.<context>)의 domain 은 core-domain 에, application/api 는 core-api 에 있다
-include 'core:core-domain'
+// core: 유일한 실행 모듈. 컨텍스트(com.meteor.<context>)의 domain / repository / application / api 가 이 안에 있다
 include 'core:core-api'
 
-// storage: 컨텍스트별 storage 패키지(엔티티, Spring Data, *Repository)와 저장소 인프라(DataSource, JPA 설정, BaseEntity)
+// storage: 컨텍스트별 JPA 엔티티·Spring Data 인터페이스(<context>.storage)와 저장소 인프라. 도메인을 모른다
 include 'storage:db-core'
 
 // clients: 외부 시스템 연동 어댑터

@@ -1,6 +1,6 @@
 package com.meteor.order.application;
 
-import com.meteor.order.storage.OrderRepository;
+import com.meteor.order.repository.OrderRepository;
 import com.meteor.shared.Money;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;

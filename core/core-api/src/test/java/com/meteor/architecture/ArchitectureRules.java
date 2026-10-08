@@ -31,26 +31,29 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
  * docs/ARCHITECTURE.md 의 구조 규칙(R-xx). 규칙 ID 와 필드 이름이 대응한다.
  *
  * <p>
- * 패키지 규약: {@code com.meteor.<context>.{domain|application|api|storage|clients}}.
+ * 패키지 규약:
+ * {@code com.meteor.<context>.{domain|repository|application|api|storage|clients}}.
  * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다.
  *
  * <p>
- * 컨텍스트의 네 계층은 세 모듈에 나뉘어 있다. domain 은 core-domain, storage 는 storage/db-core, application
- * 과 api 는 core-api. 모듈 의존(core-api → storage → core-domain)이 1차 경계이고, 그 안의 세부 규칙은 이 클래스가
- * 강제한다. 모든 모듈이 테스트 클래스패스에 있으므로 com.meteor 전체를 한 번에 검사한다.
+ * JPA 엔티티와 Spring Data({@code <context>.storage})는 storage/db-core 모듈에, 나머지 계층은 core-api
+ * 에 있다. storage 는 도메인을 모르고(모듈 의존이 core-api → storage 한 방향), {@code <context>.repository}
+ * 어댑터가 엔티티를 애그리거트로 바꾼다. 모든 모듈이 테스트 클래스패스에 있으므로 com.meteor 전체를 한 번에 검사한다.
  */
 @AnalyzeClasses(packages = "com.meteor", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureRules {
 
-    private static final String DOMAIN = "..domain..";
+    private static final String DOMAIN = "com.meteor..domain..";
 
-    private static final String APPLICATION = "..application..";
+    private static final String APPLICATION = "com.meteor..application..";
 
-    private static final String API = "..api..";
+    private static final String API = "com.meteor..api..";
 
-    private static final String STORAGE = "..storage..";
+    private static final String STORAGE = "com.meteor..storage..";
 
-    private static final String CLIENTS = "..clients..";
+    private static final String REPOSITORY = "com.meteor..repository..";
+
+    private static final String CLIENTS = "com.meteor..clients..";
 
     private static final String SHARED = "com.meteor.shared..";
 
@@ -63,8 +66,9 @@ class ArchitectureRules {
         .resideInAPackage(DOMAIN)
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage("org.springframework..", "jakarta.persistence..", APPLICATION, API, STORAGE, CLIENTS)
-        .as("R-01 domain 은 Spring, JPA, application, api, storage, clients 를 모른다");
+        .resideInAnyPackage("org.springframework..", "jakarta.persistence..", APPLICATION, API, STORAGE, REPOSITORY,
+                CLIENTS)
+        .as("R-01 domain 은 Spring, JPA, application, api, repository, storage, clients 를 모른다");
 
     @ArchTest
     static final ArchRule R01_domain_uses_only_error_vocabulary_from_support = noClasses().that()
@@ -101,11 +105,12 @@ class ArchitectureRules {
     static final ArchRule R03_api_depends_only_on_use_cases = noClasses().that()
         .resideInAPackage(API)
         .should()
-        .dependOnClassesThat(resideInAPackage(STORAGE).or(resideInAPackage(CLIENTS))
+        .dependOnClassesThat(resideInAPackage(STORAGE).or(resideInAPackage(REPOSITORY))
+            .or(resideInAPackage(CLIENTS))
             .or(domainServices())
             .or(resideInAPackage(APPLICATION).and(simpleNameEndingWith("Facade").or(simpleNameEndingWith("Listener"))
                 .or(simpleNameEndingWith("Event")))))
-        .as("R-03 api 는 UseCase(와 Command, Query)만 의존한다. storage, clients, *Policy, Facade, Listener, Event 에 의존하지 않는다");
+        .as("R-03 api 는 UseCase(와 Command, Query)만 의존한다. repository, storage, clients, *Policy, Facade, Listener, Event 에 의존하지 않는다");
 
     @ArchTest
     static final ArchRule R03_api_only_reads_aggregates = noClasses().that()
@@ -155,11 +160,19 @@ class ArchitectureRules {
 
     @ArchTest
     static final ArchRule R06_adapters_do_not_depend_on_application_or_api = noClasses().that()
-        .resideInAnyPackage(STORAGE, CLIENTS)
+        .resideInAnyPackage(STORAGE, REPOSITORY, CLIENTS)
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage(APPLICATION, API)
-        .as("R-06 storage, clients 는 application, api 에 의존하지 않는다");
+        .as("R-06 storage, repository, clients 는 application, api 에 의존하지 않는다");
+
+    @ArchTest
+    static final ArchRule R06_storage_knows_no_domain = noClasses().that()
+        .resideInAPackage(STORAGE)
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(DOMAIN, REPOSITORY, SHARED)
+        .as("R-06 storage(JPA 엔티티, Spring Data)는 도메인을 모른다. 변환은 repository 어댑터가 한다");
 
     @ArchTest
     static final ArchRule R07_contexts_do_not_depend_on_each_other = SlicesRuleDefinition.slices()
@@ -178,12 +191,12 @@ class ArchitectureRules {
         .as("R-08 JPA 엔티티는 storage 패키지에만 있다");
 
     @ArchTest
-    static final ArchRule R08_nothing_outside_storage_touches_entities = noClasses().that()
-        .resideOutsideOfPackage(STORAGE)
+    static final ArchRule R08_only_repository_adapters_touch_entities = noClasses().that()
+        .resideOutsideOfPackages(STORAGE, REPOSITORY)
         .should()
         .dependOnClassesThat()
         .areAnnotatedWith(Entity.class)
-        .as("R-08 storage 밖의 클래스는 JPA 엔티티를 모른다");
+        .as("R-08 JPA 엔티티는 storage 와 repository 어댑터 밖으로 나가지 않는다. application 은 *Repository 가 돌려준 애그리거트만 본다");
 
     @ArchTest
     static final ArchRule R09_shared_has_no_dependencies = noClasses().that()
@@ -250,8 +263,8 @@ class ArchitectureRules {
 
     /** 애그리거트: domain 의 클래스 중 enum, record, 도메인 서비스가 아닌 것. */
     private static boolean isAggregate(JavaClass javaClass) {
-        return javaClass.getPackageName().contains(".domain") && !javaClass.isEnum() && !javaClass.isRecord()
-                && !domainServices().test(javaClass);
+        return javaClass.getPackageName().startsWith("com.meteor.") && javaClass.getPackageName().contains(".domain")
+                && !javaClass.isEnum() && !javaClass.isRecord() && !domainServices().test(javaClass);
     }
 
     /** api 가 애그리거트에서 불러도 되는 메서드: 읽기 전용 접근자. */

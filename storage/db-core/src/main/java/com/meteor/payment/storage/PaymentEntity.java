@@ -1,18 +1,13 @@
 package com.meteor.payment.storage;
 
-import com.meteor.payment.domain.Payment;
-import com.meteor.payment.domain.PaymentMethod;
-import com.meteor.shared.Money;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "payment")
-class PaymentEntity extends BaseEntity {
+public class PaymentEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long orderId;
@@ -20,23 +15,28 @@ class PaymentEntity extends BaseEntity {
     @Column(nullable = false)
     private long amount;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private PaymentMethod method;
+    private String method;
 
     protected PaymentEntity() {
     }
 
-    static PaymentEntity from(Payment payment) {
-        PaymentEntity entity = new PaymentEntity();
-        entity.orderId = payment.getOrderId();
-        entity.amount = payment.getAmount().amount();
-        entity.method = payment.getMethod();
-        return entity;
+    public PaymentEntity(Long orderId, long amount, String method) {
+        this.orderId = orderId;
+        this.amount = amount;
+        this.method = method;
     }
 
-    Payment toDomain() {
-        return Payment.restore(getId(), orderId, Money.of(amount), method);
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public long getAmount() {
+        return amount;
+    }
+
+    public String getMethod() {
+        return method;
     }
 
 }

@@ -1,8 +1,6 @@
-// 저장소 모듈. 컨텍스트별 JPA 엔티티·Spring Data 인터페이스·*Repository(<context>.storage)와 저장소 인프라(support.storage).
-// *Repository 가 애그리거트를 주고받으므로 core-domain 을 api 로 노출한다. 비즈니스 규칙과 트랜잭션 경계는 두지 않는다 (R-02, R-06).
+// 저장소 모듈. 컨텍스트별 JPA 엔티티·Spring Data 인터페이스(<context>.storage)와 저장소 인프라(support.storage).
+// 도메인을 모른다. 엔티티는 상태를 문자열로 저장하고, 애그리거트와의 변환은 core-api 의 <context>.repository 어댑터가 한다.
 dependencies {
-    api project(':core:core-domain')
-
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'com.h2database:h2'

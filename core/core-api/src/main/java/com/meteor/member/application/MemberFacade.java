@@ -1,7 +1,7 @@
 package com.meteor.member.application;
 
 import com.meteor.member.domain.Member;
-import com.meteor.member.storage.MemberRepository;
+import com.meteor.member.repository.MemberRepository;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
 

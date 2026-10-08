@@ -1,22 +1,16 @@
 package com.meteor.order.storage;
 
-import com.meteor.order.domain.Order;
-import com.meteor.order.domain.OrderStatus;
-import com.meteor.shared.Address;
-import com.meteor.shared.Money;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 /**
- * 주문 영속 모델. VO(Money, Address)는 컬럼으로 펼쳐 저장하고 복원 시 다시 조립한다. 회원 테이블과 FK 를 걸지 않는다(S-06).
+ * 주문 영속 모델. 도메인을 모르므로 값 객체는 컬럼으로 펼치고 상태는 문자열로 저장한다. 회원 테이블과 FK 를 걸지 않는다(S-04).
  */
 @Entity
 @Table(name = "orders")
-class OrderEntity extends BaseEntity {
+public class OrderEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long memberId;
@@ -39,33 +33,58 @@ class OrderEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String zipCode;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private OrderStatus status;
+    private String status;
 
     protected OrderEntity() {
     }
 
-    static OrderEntity from(Order order) {
-        OrderEntity entity = new OrderEntity();
-        entity.memberId = order.getMemberId();
-        entity.productName = order.getProductName();
-        entity.quantity = order.getQuantity();
-        entity.unitPrice = order.getUnitPrice().amount();
-        entity.city = order.getShippingAddress().city();
-        entity.street = order.getShippingAddress().street();
-        entity.zipCode = order.getShippingAddress().zipCode();
-        entity.status = order.getStatus();
-        return entity;
+    public OrderEntity(Long memberId, String productName, int quantity, long unitPrice, String city, String street,
+            String zipCode, String status) {
+        this.memberId = memberId;
+        this.productName = productName;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.city = city;
+        this.street = street;
+        this.zipCode = zipCode;
+        this.status = status;
     }
 
-    void apply(Order order) {
-        this.status = order.getStatus();
+    public void changeStatus(String status) {
+        this.status = status;
     }
 
-    Order toDomain() {
-        return Order.restore(getId(), memberId, productName, quantity, Money.of(unitPrice),
-                new Address(city, street, zipCode), status);
+    public Long getMemberId() {
+        return memberId;
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public long getUnitPrice() {
+        return unitPrice;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public String getZipCode() {
+        return zipCode;
+    }
+
+    public String getStatus() {
+        return status;
     }
 
 }
