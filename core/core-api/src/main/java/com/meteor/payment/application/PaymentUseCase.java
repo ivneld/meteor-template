@@ -31,17 +31,17 @@ public class PaymentUseCase {
     }
 
     @Transactional
-    public PaymentResult pay(PaymentPayCommand command) {
+    public Payment pay(PaymentPayCommand command) {
         Money amount = orderFacade.payableAmount(command.orderId());
         Payment saved = paymentRepository.save(Payment.approve(command.orderId(), amount, command.method()));
         eventPublisher.publishEvent(new PaymentCompletedEvent(saved.getOrderId(), saved.getId()));
-        return PaymentResult.from(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
-    public PaymentResult find(Long paymentId) {
-        return PaymentResult.from(paymentRepository.findById(paymentId)
-            .orElseThrow(() -> new CoreException(ErrorCode.PAYMENT_NOT_FOUND).property("paymentId", paymentId)));
+    public Payment find(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+            .orElseThrow(() -> new CoreException(ErrorCode.PAYMENT_NOT_FOUND).property("paymentId", paymentId));
     }
 
 }

@@ -1,7 +1,7 @@
 package com.meteor.payment.api;
 
 import com.meteor.payment.api.request.PaymentPayRequest;
-import com.meteor.payment.application.PaymentResult;
+import com.meteor.payment.domain.Payment;
 import com.meteor.payment.application.PaymentUseCase;
 import com.meteor.payment.domain.PaymentMethod;
 import com.meteor.shared.Money;
@@ -39,7 +39,7 @@ class PaymentControllerTest extends RestDocsTest {
 
     @Test
     void pay() throws Exception {
-        when(paymentUseCase.pay(any())).thenReturn(new PaymentResult(1L, 1L, Money.of(100_000), PaymentMethod.CARD));
+        when(paymentUseCase.pay(any())).thenReturn(Payment.restore(1L, 1L, Money.of(100_000), PaymentMethod.CARD));
 
         mockMvc.perform(post("/api/v1/payments").contentType(MediaType.APPLICATION_JSON)
             .content(JsonMapper.builder().build().writeValueAsString(new PaymentPayRequest(1L, PaymentMethod.CARD))))

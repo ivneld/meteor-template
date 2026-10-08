@@ -3,11 +3,11 @@ index c4a2bbd..0cf6df0 100644
 --- a/a/core/core-api/src/main/java/com/meteor/shipping/application/ShippingUseCase.java
 +++ b/b/core/core-api/src/main/java/com/meteor/shipping/application/ShippingUseCase.java
 @@ -40,7 +40,7 @@ public class ShippingUseCase {
-     public ShippingResult ship(Long shippingId) {
+     public Shipping ship(Long shippingId) {
          Shipping shipping = load(shippingId);
          shipping.ship();
--        return ShippingResult.from(shippingRepository.save(shipping));
-+        return ShippingResult.from(shipping);
+-        return shippingRepository.save(shipping);
++        return shipping;
      }
  
      @Transactional

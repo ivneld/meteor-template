@@ -31,25 +31,25 @@ public class OrderUseCase {
     }
 
     @Transactional
-    public OrderResult place(OrderPlaceCommand command) {
+    public Order place(OrderPlaceCommand command) {
         memberFacade.ensureActive(command.memberId());
         OrderLimitPolicy.ensureCanPlace(command.memberId(),
                 orderRepository.countByMemberIdAndStatus(command.memberId(), OrderLimitPolicy.COUNTED_STATUS));
         Order order = Order.place(command.memberId(), command.productName(), command.quantity(), command.unitPrice(),
                 command.shippingAddress());
-        return OrderResult.from(orderRepository.save(order));
+        return orderRepository.save(order);
     }
 
     @Transactional(readOnly = true)
-    public OrderResult find(Long orderId) {
-        return OrderResult.from(load(orderId));
+    public Order find(Long orderId) {
+        return load(orderId);
     }
 
     @Transactional
-    public OrderResult cancel(Long orderId) {
+    public Order cancel(Long orderId) {
         Order order = load(orderId);
         order.cancel();
-        return OrderResult.from(orderRepository.save(order));
+        return orderRepository.save(order);
     }
 
     /**
@@ -57,12 +57,12 @@ public class OrderUseCase {
      * 커밋되거나 함께 롤백된다(S-05).
      */
     @Transactional
-    public OrderResult markPaid(Long orderId) {
+    public Order markPaid(Long orderId) {
         Order order = load(orderId);
         order.markPaid();
         Order saved = orderRepository.save(order);
         eventPublisher.publishEvent(new OrderPaidEvent(saved.getId(), saved.getShippingAddress()));
-        return OrderResult.from(saved);
+        return saved;
     }
 
     private Order load(Long orderId) {

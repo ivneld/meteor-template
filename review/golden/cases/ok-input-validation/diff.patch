@@ -5,7 +5,7 @@ index 3ee998c..8589960 100644
 @@ -32,6 +32,9 @@ public class OrderUseCase {
  
      @Transactional
-     public OrderResult place(OrderPlaceCommand command) {
+     public Order place(OrderPlaceCommand command) {
 +        if (command.productName() == null || command.productName().isBlank()) {
 +            throw new CoreException(ErrorCode.INVALID_REQUEST, "productName is required");
 +        }

@@ -1,7 +1,7 @@
 package com.meteor.member.api;
 
 import com.meteor.member.api.request.MemberRegisterRequest;
-import com.meteor.member.application.MemberResult;
+import com.meteor.member.domain.Member;
 import com.meteor.member.application.MemberUseCase;
 import com.meteor.member.domain.Email;
 import com.meteor.member.domain.MemberStatus;
@@ -42,7 +42,7 @@ class MemberControllerTest extends RestDocsTest {
     @Test
     void register() throws Exception {
         when(memberUseCase.register(any()))
-            .thenReturn(new MemberResult(1L, Email.of("kim@example.com"), "kim", MemberStatus.ACTIVE));
+            .thenReturn(Member.restore(1L, Email.of("kim@example.com"), "kim", MemberStatus.ACTIVE));
 
         mockMvc
             .perform(post("/api/v1/members").contentType(MediaType.APPLICATION_JSON)

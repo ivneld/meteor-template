@@ -39,6 +39,6 @@ index 3ee998c..2ca44b7 100644
       */
 -    @Transactional
 +    @Transactional(propagation = Propagation.REQUIRES_NEW)
-     public OrderResult markPaid(Long orderId) {
+     public Order markPaid(Long orderId) {
          Order order = load(orderId);
          order.markPaid();

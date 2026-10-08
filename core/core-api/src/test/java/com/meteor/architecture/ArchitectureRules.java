@@ -3,6 +3,7 @@ package com.meteor.architecture;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -19,10 +20,12 @@ import jakarta.persistence.Entity;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleNameEndingWith;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 
 /**
  * docs/ARCHITECTURE.md 의 구조 규칙(R-xx). 규칙 ID 와 필드 이름이 대응한다.
@@ -94,11 +97,22 @@ class ArchitectureRules {
         .as("R-02 @Transactional 메서드는 application 에만 있다");
 
     @ArchTest
-    static final ArchRule R03_api_does_not_depend_on_aggregates_or_storage = noClasses().that()
+    static final ArchRule R03_api_depends_only_on_use_cases = noClasses().that()
         .resideInAPackage(API)
         .should()
-        .dependOnClassesThat(domainClassesWithBehavior().or(resideInAPackage(STORAGE)).or(resideInAPackage(CLIENTS)))
-        .as("R-03 api 는 애그리거트·Policy, storage, clients 에 의존하지 않는다. 같은 컨텍스트 domain 의 enum·record 는 허용");
+        .dependOnClassesThat(resideInAPackage(STORAGE).or(resideInAPackage(CLIENTS))
+            .or(domainServices())
+            .or(resideInAPackage(APPLICATION).and(simpleNameEndingWith("Facade").or(simpleNameEndingWith("Listener"))
+                .or(simpleNameEndingWith("Event")))))
+        .as("R-03 api 는 UseCase(와 Command, Query)만 의존한다. storage, clients, *Policy, Facade, Listener, Event 에 의존하지 않는다");
+
+    @ArchTest
+    static final ArchRule R03_api_only_reads_aggregates = noClasses().that()
+        .resideInAPackage(API)
+        .should()
+        .callMethodWhere(DescribedPredicate.describe("a state-changing method of a domain aggregate",
+                (JavaMethodCall call) -> isAggregate(call.getTargetOwner()) && !isAccessor(call.getTarget().getName())))
+        .as("R-03 api 는 UseCase 가 돌려준 애그리거트에서 getter 만 읽는다. 상태를 바꾸는 메서드는 부르지 않는다");
 
     @ArchTest
     static final ArchRule R04_use_cases_do_not_call_each_other = classes().that()
@@ -109,9 +123,11 @@ class ArchitectureRules {
     @ArchTest
     static final ArchRule R05_no_service_suffix_in_domain = noClasses().that()
         .resideInAPackage(DOMAIN)
+        .and()
+        .haveSimpleNameNotEndingWith("DomainService")
         .should()
         .haveSimpleNameEndingWith("Service")
-        .as("R-05 domain 에 *Service 접미어를 두지 않는다. 규칙은 애그리거트로, 남는 것은 *Policy 같은 역할 이름으로");
+        .as("R-05 domain 의 서비스는 *Policy 나 *DomainService 로 이름 짓는다. 맨 *Service 는 application 의 UseCase 와 헷갈린다");
 
     @ArchTest
     static final ArchRule R05_application_classes_are_use_cases_commands_or_results = classes().that()
@@ -123,8 +139,6 @@ class ArchitectureRules {
         .orShould()
         .haveSimpleNameEndingWith("Command")
         .orShould()
-        .haveSimpleNameEndingWith("Result")
-        .orShould()
         .haveSimpleNameEndingWith("Facade")
         .orShould()
         .haveSimpleNameEndingWith("Event")
@@ -132,7 +146,9 @@ class ArchitectureRules {
         .haveSimpleNameEndingWith("Listener")
         .orShould()
         .haveSimpleNameEndingWith("Query")
-        .as("R-05 application 의 클래스는 *UseCase, *Command, *Result, *Facade, *Event, *Listener, *Query 중 하나다");
+        .orShould()
+        .haveSimpleNameEndingWith("View")
+        .as("R-05 application 의 클래스는 *UseCase, *Command, *Facade, *Event, *Listener, *Query, *View 중 하나다. 결과는 애그리거트를 그대로 돌려준다");
 
     @ArchTest
     static final ArchRule R06_adapters_do_not_depend_on_application_or_api = noClasses().that()
@@ -195,6 +211,14 @@ class ArchitectureRules {
         .should(returnOnlyDecisionTypes())
         .as("R-10 Facade 는 판단 결과만 돌려준다. 반환 타입은 void, 원시 타입, java.lang, shared 의 값뿐이다");
 
+    @ArchTest
+    static final ArchRule R11_api_dtos_carry_no_domain_types_except_enums = noFields().that()
+        .areDeclaredInClassesThat()
+        .resideInAPackage(API)
+        .should()
+        .haveRawType(resideInAnyPackage(DOMAIN, SHARED).and(DescribedPredicate.not(JavaClass.Predicates.ENUMS)))
+        .as("R-11 api 의 요청·응답 객체는 enum 을 제외한 도메인 타입을 필드로 갖지 않는다. 값 객체는 원시 타입이나 api 전용 record 로 푼다");
+
     /** 컨텍스트 = com.meteor 바로 아래 패키지. shared 와 support 는 컨텍스트가 아니므로 제외한다. */
     private static SliceAssignment contexts() {
         return new SliceAssignment() {
@@ -216,10 +240,21 @@ class ArchitectureRules {
         };
     }
 
-    /** 상태나 행위를 가진 domain 클래스(애그리거트, Policy). enum 과 record 는 값이므로 제외한다. */
-    private static DescribedPredicate<JavaClass> domainClassesWithBehavior() {
-        return resideInAPackage(DOMAIN).and(DescribedPredicate.describe("not an enum or record",
-                javaClass -> !javaClass.isEnum() && !javaClass.isRecord()));
+    /** 도메인 서비스: 규칙을 담되 애그리거트가 아닌 domain 클래스. *Policy, *DomainService. */
+    private static DescribedPredicate<JavaClass> domainServices() {
+        return resideInAPackage(DOMAIN).and(simpleNameEndingWith("Policy").or(simpleNameEndingWith("DomainService")));
+    }
+
+    /** 애그리거트: domain 의 클래스 중 enum, record, 도메인 서비스가 아닌 것. */
+    private static boolean isAggregate(JavaClass javaClass) {
+        return javaClass.getPackageName().contains(".domain") && !javaClass.isEnum() && !javaClass.isRecord()
+                && !domainServices().test(javaClass);
+    }
+
+    /** api 가 애그리거트에서 불러도 되는 메서드: 읽기 전용 접근자. */
+    private static boolean isAccessor(String name) {
+        return name.startsWith("get") || name.startsWith("is") || name.startsWith("has") || name.equals("toString")
+                || name.equals("equals") || name.equals("hashCode") || name.endsWith("Amount");
     }
 
     private static ArchCondition<JavaMethod> returnOnlyDecisionTypes() {

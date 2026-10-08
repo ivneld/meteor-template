@@ -1,7 +1,7 @@
 package com.meteor.shipping.api;
 
 import com.meteor.shared.Address;
-import com.meteor.shipping.application.ShippingResult;
+import com.meteor.shipping.domain.Shipping;
 import com.meteor.shipping.application.ShippingUseCase;
 import com.meteor.shipping.domain.ShippingStatus;
 import com.meteor.support.web.ApiControllerAdvice;
@@ -37,7 +37,7 @@ class ShippingControllerTest extends RestDocsTest {
     @Test
     void ship() throws Exception {
         when(shippingUseCase.ship(eq(1L))).thenReturn(
-                new ShippingResult(1L, 1L, new Address("Seoul", "Teheran-ro 1", "06000"), ShippingStatus.SHIPPED));
+                Shipping.restore(1L, 1L, new Address("Seoul", "Teheran-ro 1", "06000"), ShippingStatus.SHIPPED));
 
         mockMvc.perform(post("/api/v1/shippings/{shippingId}/ship", 1L))
             .andExpect(status().isOk())

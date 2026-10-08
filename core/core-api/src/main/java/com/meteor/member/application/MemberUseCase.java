@@ -8,6 +8,9 @@ import com.meteor.support.error.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Member 컨텍스트의 유스케이스. 트랜잭션 경계와 흐름만 맡고, 결과로는 애그리거트를 그대로 돌려준다. 규칙은 애그리거트와 *Policy 에 있다.
+ */
 @Service
 public class MemberUseCase {
 
@@ -18,20 +21,20 @@ public class MemberUseCase {
     }
 
     @Transactional
-    public MemberResult register(MemberRegisterCommand command) {
-        return MemberResult.from(memberRepository.save(Member.register(command.email(), command.name())));
+    public Member register(MemberRegisterCommand command) {
+        return memberRepository.save(Member.register(command.email(), command.name()));
     }
 
     @Transactional(readOnly = true)
-    public MemberResult find(Long memberId) {
-        return MemberResult.from(load(memberId));
+    public Member find(Long memberId) {
+        return load(memberId);
     }
 
     @Transactional
-    public MemberResult withdraw(Long memberId) {
+    public Member withdraw(Long memberId) {
         Member member = load(memberId);
         member.withdraw();
-        return MemberResult.from(memberRepository.save(member));
+        return memberRepository.save(member);
     }
 
     private Member load(Long memberId) {

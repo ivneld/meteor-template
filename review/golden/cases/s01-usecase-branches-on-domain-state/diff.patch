@@ -12,11 +12,11 @@ index 3ee998c..47f7dc8 100644
  import com.meteor.support.error.ErrorCode;
 @@ -48,6 +49,9 @@ public class OrderUseCase {
      @Transactional
-     public OrderResult cancel(Long orderId) {
+     public Order cancel(Long orderId) {
          Order order = load(orderId);
 +        if (order.getStatus() == OrderStatus.PAID) {
 +            throw new CoreException(ErrorCode.ORDER_NOT_CANCELLABLE).property("orderId", orderId);
 +        }
          order.cancel();
-         return OrderResult.from(orderRepository.save(order));
+         return orderRepository.save(order);
      }

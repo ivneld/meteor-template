@@ -39,7 +39,7 @@ meteor-template
 ```
 core-api/src/main/java/com/meteor/order
 ├── domain        Order(애그리거트), OrderStatus, OrderLimitPolicy        ← 규칙은 여기에만
-├── application   OrderUseCase, OrderFacade, OrderPaidEvent, OrderEventListener
+├── application   OrderUseCase(애그리거트를 그대로 반환), OrderFacade, OrderPaidEvent, OrderEventListener
 ├── api           OrderController, request/, response/
 └── storage       OrderRepository(public 클래스, 엔티티 ↔ 애그리거트 변환)
                   OrderEntity, OrderJpaRepository (package-private)
@@ -85,6 +85,7 @@ core-api/src/main/java/com/meteor/order
 ## 핵심 규칙
 
 - `domain` 은 Spring, JPA, 다른 계층을 모른다. 여러 애그리거트에 걸친 규칙은 `*Policy` 에 둔다.
+- 서비스는 두 종류뿐이다. 트랜잭션과 흐름을 맡는 `*UseCase`(application), 규칙을 맡는 `*Policy`(domain). api 는 UseCase 만 의존하고 응답 DTO 에는 enum 외 도메인 타입을 두지 않는다.
 - `@Transactional` 은 `application` 에만 있다.
 - 컨텍스트끼리 직접 의존하지 않는다. `*Facade` 와 `*Event` 로만. Facade 는 모델이 아니라 판단 결과를 돌려준다.
 - 함께 바뀌어야 하는 컨텍스트 간 처리는 같은 트랜잭션으로, 확정 뒤의 부가 처리만 커밋 이후로 받는다.

@@ -29,13 +29,13 @@ index bc6a22b..2398539 100644
      }
  
 @@ -34,7 +39,9 @@ public class PaymentUseCase {
-     public PaymentResult pay(PaymentPayCommand command) {
+     public Payment pay(PaymentPayCommand command) {
          Money amount = orderFacade.payableAmount(command.orderId());
          Payment saved = paymentRepository.save(Payment.approve(command.orderId(), amount, command.method()));
 -        eventPublisher.publishEvent(new PaymentCompletedEvent(saved.getOrderId(), saved.getId()));
 +        Order order = orderRepository.findById(command.orderId()).orElseThrow();
 +        order.markPaid();
 +        orderRepository.save(order);
-         return PaymentResult.from(saved);
+         return saved;
      }
  

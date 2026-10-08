@@ -1,7 +1,7 @@
 package com.meteor.order.api;
 
 import com.meteor.order.api.request.OrderPlaceRequest;
-import com.meteor.order.application.OrderResult;
+import com.meteor.order.domain.Order;
 import com.meteor.order.application.OrderUseCase;
 import com.meteor.order.domain.OrderStatus;
 import com.meteor.shared.Address;
@@ -97,8 +97,8 @@ class OrderControllerTest extends RestDocsTest {
                             fieldWithPath("orderStatus").type(JsonFieldType.STRING).description("현재 주문 상태"))));
     }
 
-    private static OrderResult result(OrderStatus status) {
-        return new OrderResult(1L, 1L, "keyboard", 2, Money.of(50_000), Money.of(100_000), ADDRESS, status);
+    private static Order result(OrderStatus status) {
+        return Order.restore(1L, 1L, "keyboard", 2, Money.of(50_000), ADDRESS, status);
     }
 
     private static ResponseFieldsSnippet orderResponseFields() {

@@ -22,7 +22,7 @@ index bc6a22b..60abc69 100644
 @@ -32,6 +32,9 @@ public class PaymentUseCase {
  
      @Transactional
-     public PaymentResult pay(PaymentPayCommand command) {
+     public Payment pay(PaymentPayCommand command) {
 +        if (!"CREATED".equals(orderFacade.statusName(command.orderId()))) {
 +            throw new CoreException(ErrorCode.ORDER_NOT_PAYABLE).property("orderId", command.orderId());
 +        }

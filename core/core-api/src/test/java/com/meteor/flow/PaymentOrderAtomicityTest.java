@@ -53,16 +53,17 @@ class PaymentOrderAtomicityTest extends ContextTest {
 
     @Test
     void failureAfterOrderPaidRollsBackPaymentToo() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("atomic@example.com"), "kim")).id();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("atomic@example.com"), "kim"))
+            .getId();
         Long orderId = orderUseCase
             .place(new OrderPlaceCommand(memberId, "keyboard", 1, Money.of(10_000),
                     new Address("Seoul", "Teheran-ro 1", "06000")))
-            .id();
+            .getId();
 
         assertThatThrownBy(() -> paymentUseCase.pay(new PaymentPayCommand(orderId, PaymentMethod.CARD)))
             .isInstanceOf(IllegalStateException.class);
 
-        assertThat(orderUseCase.find(orderId).status()).isEqualTo(OrderStatus.CREATED);
+        assertThat(orderUseCase.find(orderId).getStatus()).isEqualTo(OrderStatus.CREATED);
         assertThat(paymentCount(orderId)).isZero();
         assertThatThrownBy(() -> shippingUseCase.findByOrder(orderId)).isInstanceOf(CoreException.class)
             .satisfies(e -> assertThat(((CoreException) e).getErrorCode()).isEqualTo(ErrorCode.SHIPPING_NOT_FOUND));

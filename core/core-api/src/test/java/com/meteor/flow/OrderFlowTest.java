@@ -5,17 +5,17 @@ import com.meteor.member.application.MemberRegisterCommand;
 import com.meteor.member.application.MemberUseCase;
 import com.meteor.member.domain.Email;
 import com.meteor.order.application.OrderPlaceCommand;
-import com.meteor.order.application.OrderResult;
+import com.meteor.order.domain.Order;
 import com.meteor.order.application.OrderUseCase;
 import com.meteor.order.domain.OrderLimitPolicy;
 import com.meteor.order.domain.OrderStatus;
 import com.meteor.payment.application.PaymentPayCommand;
-import com.meteor.payment.application.PaymentResult;
+import com.meteor.payment.domain.Payment;
 import com.meteor.payment.application.PaymentUseCase;
 import com.meteor.payment.domain.PaymentMethod;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
-import com.meteor.shipping.application.ShippingResult;
+import com.meteor.shipping.domain.Shipping;
 import com.meteor.shipping.application.ShippingUseCase;
 import com.meteor.shipping.domain.ShippingStatus;
 import com.meteor.support.error.CoreException;
@@ -56,40 +56,39 @@ class OrderFlowTest extends ContextTest {
 
     @Test
     void paymentDrivesOrderAndShippingThroughEvents() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("flow@example.com"), "kim")).id();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("flow@example.com"), "kim")).getId();
         Address address = new Address("Seoul", "Teheran-ro 1", "06000");
-        OrderResult order = orderUseCase
-            .place(new OrderPlaceCommand(memberId, "keyboard", 2, Money.of(50_000), address));
-        assertThat(order.status()).isEqualTo(OrderStatus.CREATED);
+        Order order = orderUseCase.place(new OrderPlaceCommand(memberId, "keyboard", 2, Money.of(50_000), address));
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
 
-        PaymentResult payment = paymentUseCase.pay(new PaymentPayCommand(order.id(), PaymentMethod.CARD));
+        Payment payment = paymentUseCase.pay(new PaymentPayCommand(order.getId(), PaymentMethod.CARD));
 
-        assertThat(payment.amount()).isEqualTo(Money.of(100_000));
-        assertThat(orderUseCase.find(order.id()).status()).isEqualTo(OrderStatus.PAID);
+        assertThat(payment.getAmount()).isEqualTo(Money.of(100_000));
+        assertThat(orderUseCase.find(order.getId()).getStatus()).isEqualTo(OrderStatus.PAID);
 
-        ShippingResult shipping = shippingUseCase.findByOrder(order.id());
-        assertThat(shipping.status()).isEqualTo(ShippingStatus.READY);
-        assertThat(shipping.address()).isEqualTo(address);
+        Shipping shipping = shippingUseCase.findByOrder(order.getId());
+        assertThat(shipping.getStatus()).isEqualTo(ShippingStatus.READY);
+        assertThat(shipping.getAddress()).isEqualTo(address);
 
-        shippingUseCase.ship(shipping.id());
-        assertThat(shippingUseCase.deliver(shipping.id()).status()).isEqualTo(ShippingStatus.DELIVERED);
+        shippingUseCase.ship(shipping.getId());
+        assertThat(shippingUseCase.deliver(shipping.getId()).getStatus()).isEqualTo(ShippingStatus.DELIVERED);
     }
 
     @Test
     void paidOrderCannotBePaidAgain() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("twice@example.com"), "kim")).id();
-        OrderResult order = orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000),
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("twice@example.com"), "kim")).getId();
+        Order order = orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000),
                 new Address("Seoul", "Teheran-ro 1", "06000")));
-        paymentUseCase.pay(new PaymentPayCommand(order.id(), PaymentMethod.CARD));
+        paymentUseCase.pay(new PaymentPayCommand(order.getId(), PaymentMethod.CARD));
 
-        assertThatThrownBy(() -> paymentUseCase.pay(new PaymentPayCommand(order.id(), PaymentMethod.CARD)))
+        assertThatThrownBy(() -> paymentUseCase.pay(new PaymentPayCommand(order.getId(), PaymentMethod.CARD)))
             .isInstanceOf(CoreException.class)
             .satisfies(e -> assertThat(((CoreException) e).getErrorCode()).isEqualTo(ErrorCode.ORDER_NOT_PAYABLE));
     }
 
     @Test
     void memberCannotHoldMoreAwaitingPaymentOrdersThanTheLimit() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("limit@example.com"), "kim")).id();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("limit@example.com"), "kim")).getId();
         Address address = new Address("Seoul", "Teheran-ro 1", "06000");
         for (int i = 0; i < OrderLimitPolicy.MAX_AWAITING_PAYMENT; i++) {
             orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000), address));
@@ -103,7 +102,7 @@ class OrderFlowTest extends ContextTest {
 
     @Test
     void withdrawnMemberCannotOrder() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("gone@example.com"), "kim")).id();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("gone@example.com"), "kim")).getId();
         memberUseCase.withdraw(memberId);
 
         assertThatThrownBy(() -> orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000),
