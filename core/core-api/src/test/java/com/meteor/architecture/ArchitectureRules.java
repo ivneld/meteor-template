@@ -139,6 +139,8 @@ class ArchitectureRules {
         .orShould()
         .haveSimpleNameEndingWith("Command")
         .orShould()
+        .haveSimpleNameEndingWith("Result")
+        .orShould()
         .haveSimpleNameEndingWith("Facade")
         .orShould()
         .haveSimpleNameEndingWith("Event")
@@ -148,7 +150,7 @@ class ArchitectureRules {
         .haveSimpleNameEndingWith("Query")
         .orShould()
         .haveSimpleNameEndingWith("View")
-        .as("R-05 application 의 클래스는 *UseCase, *Command, *Facade, *Event, *Listener, *Query, *View 중 하나다. 결과는 애그리거트를 그대로 돌려준다");
+        .as("R-05 application 의 클래스는 *UseCase, *Command, *Result, *Facade, *Event, *Listener, *Query, *View 중 하나다");
 
     @ArchTest
     static final ArchRule R06_adapters_do_not_depend_on_application_or_api = noClasses().that()

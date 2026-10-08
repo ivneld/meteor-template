@@ -39,7 +39,7 @@ meteor-template
 ```
 core-api/src/main/java/com/meteor/order
 ├── domain        Order(애그리거트), OrderStatus, OrderLimitPolicy        ← 규칙은 여기에만
-├── application   OrderUseCase(애그리거트를 그대로 반환), OrderFacade, OrderPaidEvent, OrderEventListener
+├── application   OrderUseCase(애그리거트를 그대로 반환. 필요하면 *Result/*View), OrderFacade, OrderPaidEvent, OrderEventListener
 ├── api           OrderController, request/, response/
 └── storage       OrderRepository(public 클래스, 엔티티 ↔ 애그리거트 변환)
                   OrderEntity, OrderJpaRepository (package-private)
