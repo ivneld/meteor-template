@@ -4,6 +4,7 @@ import com.meteor.shared.Address;
 import com.meteor.shared.Money;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
+import com.meteor.order.enums.OrderStatus;
 
 /**
  * 주문 애그리거트. 회원은 memberId 로만 참조한다(S-04). 결제·배송이 주문에 대해 알아야 하는 것은 OrderFacade 와

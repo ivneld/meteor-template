@@ -32,12 +32,13 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
  *
  * <p>
  * 패키지 규약:
- * {@code com.meteor.<context>.{domain|repository|application|api|storage|clients}}.
+ * {@code com.meteor.<context>.{enums|domain|repository|application|api|storage|clients}}.
  * {@code com.meteor.shared} 와 {@code com.meteor.support} 는 컨텍스트가 아닌 공통 영역이다.
  *
  * <p>
- * JPA 엔티티와 Spring Data({@code <context>.storage})는 storage/db-core 모듈에, 나머지 계층은 core-api
- * 에 있다. storage 는 도메인을 모르고(모듈 의존이 core-api → storage 한 방향), {@code <context>.repository}
+ * 도메인 enum({@code <context>.enums})은 core-enum, JPA 엔티티와 Spring
+ * Data({@code <context>.storage})는 storage/db-core, 나머지 계층은 core-api 에 있다. 모듈 의존은
+ * core-api → storage → core-enum 한 방향이라 storage 는 도메인을 모르고, {@code <context>.repository}
  * 어댑터가 엔티티를 애그리거트로 바꾼다. 모든 모듈이 테스트 클래스패스에 있으므로 com.meteor 전체를 한 번에 검사한다.
  */
 @AnalyzeClasses(packages = "com.meteor", importOptions = ImportOption.DoNotIncludeTests.class)
@@ -60,6 +61,8 @@ class ArchitectureRules {
     private static final String SUPPORT = "com.meteor.support..";
 
     private static final String ERROR = "com.meteor.support.error..";
+
+    private static final String ENUMS = "com.meteor..enums..";
 
     @ArchTest
     static final ArchRule R01_domain_knows_nothing_about_framework_or_outer_layers = noClasses().that()
@@ -217,6 +220,15 @@ class ArchitectureRules {
         .orShould()
         .beEnums()
         .as("R-09 shared 에는 record 와 enum 만 둔다. 한 컨텍스트만 쓰는 값은 그 컨텍스트의 domain 으로");
+
+    @ArchTest
+    static final ArchRule R09_enums_have_no_dependencies = noClasses().that()
+        .resideInAPackage(ENUMS)
+        .should()
+        .dependOnClassesThat(resideInAPackage("com.meteor..").and(DescribedPredicate.not(resideInAPackage(ENUMS)))
+            .or(resideInAPackage("org.springframework.."))
+            .or(resideInAPackage("jakarta..")))
+        .as("R-09 core-enum 의 도메인 enum 은 다른 패키지와 프레임워크에 의존하지 않는다");
 
     @ArchTest
     static final ArchRule R10_facades_return_decisions_not_models = methods().that()

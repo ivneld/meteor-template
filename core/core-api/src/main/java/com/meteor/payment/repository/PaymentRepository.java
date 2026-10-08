@@ -3,7 +3,6 @@ package com.meteor.payment.repository;
 import java.util.Optional;
 
 import com.meteor.payment.domain.Payment;
-import com.meteor.payment.domain.PaymentMethod;
 import com.meteor.payment.storage.PaymentEntity;
 import com.meteor.payment.storage.PaymentJpaRepository;
 import com.meteor.shared.Money;
@@ -31,13 +30,12 @@ public class PaymentRepository {
             throw new IllegalStateException("payment is immutable once approved: " + payment.getId());
         }
         PaymentEntity entity = new PaymentEntity(payment.getOrderId(), payment.getAmount().amount(),
-                payment.getMethod().name());
+                payment.getMethod());
         return toDomain(jpa.save(entity));
     }
 
     private static Payment toDomain(PaymentEntity entity) {
-        return Payment.restore(entity.getId(), entity.getOrderId(), Money.of(entity.getAmount()),
-                PaymentMethod.valueOf(entity.getMethod()));
+        return Payment.restore(entity.getId(), entity.getOrderId(), Money.of(entity.getAmount()), entity.getMethod());
     }
 
 }

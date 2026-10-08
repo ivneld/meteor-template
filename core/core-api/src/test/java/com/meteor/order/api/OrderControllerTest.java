@@ -4,7 +4,7 @@ import com.meteor.order.api.request.OrderPlaceRequest;
 import com.meteor.order.domain.Order;
 import com.meteor.order.application.OrderPlacementResult;
 import com.meteor.order.application.OrderUseCase;
-import com.meteor.order.domain.OrderStatus;
+import com.meteor.order.enums.OrderStatus;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
 import com.meteor.support.error.CoreException;

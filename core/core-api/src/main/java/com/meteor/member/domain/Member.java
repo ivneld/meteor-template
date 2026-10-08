@@ -2,6 +2,7 @@ package com.meteor.member.domain;
 
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
+import com.meteor.member.enums.MemberStatus;
 
 /**
  * 회원 애그리거트. 다른 컨텍스트는 이 객체를 알지 못하고 memberId 로만 참조한다.

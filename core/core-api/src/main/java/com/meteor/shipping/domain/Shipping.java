@@ -3,6 +3,7 @@ package com.meteor.shipping.domain;
 import com.meteor.shared.Address;
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
+import com.meteor.shipping.enums.ShippingStatus;
 
 /**
  * 배송 애그리거트. 주문은 orderId 로만 참조하고, 배송지는 OrderPaidEvent 로 받은 값이다. 상태 기계: READY → SHIPPED →

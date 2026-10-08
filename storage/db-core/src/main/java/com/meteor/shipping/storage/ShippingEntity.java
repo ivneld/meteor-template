@@ -1,8 +1,11 @@
 package com.meteor.shipping.storage;
 
+import com.meteor.shipping.enums.ShippingStatus;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 @Entity
@@ -21,13 +24,14 @@ public class ShippingEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String zipCode;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private ShippingStatus status;
 
     protected ShippingEntity() {
     }
 
-    public ShippingEntity(Long orderId, String city, String street, String zipCode, String status) {
+    public ShippingEntity(Long orderId, String city, String street, String zipCode, ShippingStatus status) {
         this.orderId = orderId;
         this.city = city;
         this.street = street;
@@ -35,7 +39,7 @@ public class ShippingEntity extends BaseEntity {
         this.status = status;
     }
 
-    public void changeStatus(String status) {
+    public void changeStatus(ShippingStatus status) {
         this.status = status;
     }
 
@@ -55,7 +59,7 @@ public class ShippingEntity extends BaseEntity {
         return zipCode;
     }
 
-    public String getStatus() {
+    public ShippingStatus getStatus() {
         return status;
     }
 

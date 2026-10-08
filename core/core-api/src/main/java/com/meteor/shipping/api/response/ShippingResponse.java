@@ -2,7 +2,7 @@ package com.meteor.shipping.api.response;
 
 import com.meteor.shared.Address;
 import com.meteor.shipping.domain.Shipping;
-import com.meteor.shipping.domain.ShippingStatus;
+import com.meteor.shipping.enums.ShippingStatus;
 
 public record ShippingResponse(Long id, Long orderId, AddressResponse address, ShippingStatus status) {
 

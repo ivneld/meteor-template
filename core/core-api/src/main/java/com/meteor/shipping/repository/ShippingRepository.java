@@ -4,7 +4,6 @@ import java.util.Optional;
 
 import com.meteor.shared.Address;
 import com.meteor.shipping.domain.Shipping;
-import com.meteor.shipping.domain.ShippingStatus;
 import com.meteor.shipping.storage.ShippingEntity;
 import com.meteor.shipping.storage.ShippingJpaRepository;
 import com.meteor.support.error.CoreException;
@@ -37,21 +36,20 @@ public class ShippingRepository {
         if (shipping.isNew()) {
             Address address = shipping.getAddress();
             entity = new ShippingEntity(shipping.getOrderId(), address.city(), address.street(), address.zipCode(),
-                    shipping.getStatus().name());
+                    shipping.getStatus());
         }
         else {
             entity = jpa.findById(shipping.getId())
                 .orElseThrow(
                         () -> new CoreException(ErrorCode.SHIPPING_NOT_FOUND).property("shippingId", shipping.getId()));
-            entity.changeStatus(shipping.getStatus().name());
+            entity.changeStatus(shipping.getStatus());
         }
         return toDomain(jpa.save(entity));
     }
 
     private static Shipping toDomain(ShippingEntity entity) {
         return Shipping.restore(entity.getId(), entity.getOrderId(),
-                new Address(entity.getCity(), entity.getStreet(), entity.getZipCode()),
-                ShippingStatus.valueOf(entity.getStatus()));
+                new Address(entity.getCity(), entity.getStreet(), entity.getZipCode()), entity.getStatus());
     }
 
 }

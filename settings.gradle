@@ -9,10 +9,11 @@ pluginManagement {
 
 rootProject.name = 'meteor-template'
 
-// core: 유일한 실행 모듈. 컨텍스트(com.meteor.<context>)의 domain / repository / application / api 가 이 안에 있다
+// core: 도메인 enum 모듈과 유일한 실행 모듈. 컨텍스트(com.meteor.<context>)의 enums 는 core-enum 에, domain / repository / application / api 는 core-api 에
+include 'core:core-enum'
 include 'core:core-api'
 
-// storage: 컨텍스트별 JPA 엔티티·Spring Data 인터페이스(<context>.storage)와 저장소 인프라. 도메인을 모른다
+// storage: 컨텍스트별 JPA 엔티티·Spring Data 인터페이스(<context>.storage)와 저장소 인프라. core-enum 만 의존하고 도메인을 모른다
 include 'storage:db-core'
 
 // clients: 외부 시스템 연동 어댑터

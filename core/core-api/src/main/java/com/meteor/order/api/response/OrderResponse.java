@@ -1,7 +1,7 @@
 package com.meteor.order.api.response;
 
 import com.meteor.order.domain.Order;
-import com.meteor.order.domain.OrderStatus;
+import com.meteor.order.enums.OrderStatus;
 import com.meteor.shared.Address;
 
 /**

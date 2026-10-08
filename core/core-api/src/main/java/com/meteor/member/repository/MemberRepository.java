@@ -4,7 +4,6 @@ import java.util.Optional;
 
 import com.meteor.member.domain.Email;
 import com.meteor.member.domain.Member;
-import com.meteor.member.domain.MemberStatus;
 import com.meteor.member.storage.MemberEntity;
 import com.meteor.member.storage.MemberJpaRepository;
 import com.meteor.support.error.CoreException;
@@ -32,19 +31,18 @@ public class MemberRepository {
     public Member save(Member member) {
         MemberEntity entity;
         if (member.isNew()) {
-            entity = new MemberEntity(member.getEmail().value(), member.getName(), member.getStatus().name());
+            entity = new MemberEntity(member.getEmail().value(), member.getName(), member.getStatus());
         }
         else {
             entity = jpa.findById(member.getId())
                 .orElseThrow(() -> new CoreException(ErrorCode.MEMBER_NOT_FOUND).property("memberId", member.getId()));
-            entity.changeStatus(member.getStatus().name());
+            entity.changeStatus(member.getStatus());
         }
         return toDomain(jpa.save(entity));
     }
 
     private static Member toDomain(MemberEntity entity) {
-        return Member.restore(entity.getId(), Email.of(entity.getEmail()), entity.getName(),
-                MemberStatus.valueOf(entity.getStatus()));
+        return Member.restore(entity.getId(), Email.of(entity.getEmail()), entity.getName(), entity.getStatus());
     }
 
 }

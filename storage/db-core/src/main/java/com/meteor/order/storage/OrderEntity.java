@@ -1,12 +1,16 @@
 package com.meteor.order.storage;
 
+import com.meteor.order.enums.OrderStatus;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 /**
- * 주문 영속 모델. 도메인을 모르므로 값 객체는 컬럼으로 펼치고 상태는 문자열로 저장한다. 회원 테이블과 FK 를 걸지 않는다(S-04).
+ * 주문 영속 모델. 도메인을 모르고 core-enum 의 enum 만 안다. 값 객체는 컬럼으로 펼쳐 저장한다. 회원 테이블과 FK 를 걸지
+ * 않는다(S-04).
  */
 @Entity
 @Table(name = "orders")
@@ -33,14 +37,15 @@ public class OrderEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String zipCode;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private OrderStatus status;
 
     protected OrderEntity() {
     }
 
     public OrderEntity(Long memberId, String productName, int quantity, long unitPrice, String city, String street,
-            String zipCode, String status) {
+            String zipCode, OrderStatus status) {
         this.memberId = memberId;
         this.productName = productName;
         this.quantity = quantity;
@@ -51,7 +56,7 @@ public class OrderEntity extends BaseEntity {
         this.status = status;
     }
 
-    public void changeStatus(String status) {
+    public void changeStatus(OrderStatus status) {
         this.status = status;
     }
 
@@ -83,7 +88,7 @@ public class OrderEntity extends BaseEntity {
         return zipCode;
     }
 
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 

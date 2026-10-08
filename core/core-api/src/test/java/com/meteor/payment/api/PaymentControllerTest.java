@@ -3,7 +3,7 @@ package com.meteor.payment.api;
 import com.meteor.payment.api.request.PaymentPayRequest;
 import com.meteor.payment.domain.Payment;
 import com.meteor.payment.application.PaymentUseCase;
-import com.meteor.payment.domain.PaymentMethod;
+import com.meteor.payment.enums.PaymentMethod;
 import com.meteor.shared.Money;
 import com.meteor.support.web.ApiControllerAdvice;
 import com.meteor.test.api.RestDocsTest;

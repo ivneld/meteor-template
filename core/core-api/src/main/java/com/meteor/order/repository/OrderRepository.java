@@ -3,7 +3,7 @@ package com.meteor.order.repository;
 import java.util.Optional;
 
 import com.meteor.order.domain.Order;
-import com.meteor.order.domain.OrderStatus;
+import com.meteor.order.enums.OrderStatus;
 import com.meteor.order.storage.OrderEntity;
 import com.meteor.order.storage.OrderJpaRepository;
 import com.meteor.shared.Address;
@@ -39,24 +39,24 @@ public class OrderRepository {
             Address address = order.getShippingAddress();
             entity = new OrderEntity(order.getMemberId(), order.getProductName(), order.getQuantity(),
                     order.getUnitPrice().amount(), address.city(), address.street(), address.zipCode(),
-                    order.getStatus().name());
+                    order.getStatus());
         }
         else {
             entity = jpa.findById(order.getId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ORDER_NOT_FOUND).property("orderId", order.getId()));
-            entity.changeStatus(order.getStatus().name());
+            entity.changeStatus(order.getStatus());
         }
         return toDomain(jpa.save(entity));
     }
 
     public long countByMemberIdAndStatus(Long memberId, OrderStatus status) {
-        return jpa.countByMemberIdAndStatus(memberId, status.name());
+        return jpa.countByMemberIdAndStatus(memberId, status);
     }
 
     private static Order toDomain(OrderEntity entity) {
         return Order.restore(entity.getId(), entity.getMemberId(), entity.getProductName(), entity.getQuantity(),
                 Money.of(entity.getUnitPrice()), new Address(entity.getCity(), entity.getStreet(), entity.getZipCode()),
-                OrderStatus.valueOf(entity.getStatus()));
+                entity.getStatus());
     }
 
 }

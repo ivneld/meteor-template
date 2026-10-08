@@ -1,4 +1,4 @@
-package com.meteor.payment.domain;
+package com.meteor.payment.enums;
 
 public enum PaymentMethod {
 

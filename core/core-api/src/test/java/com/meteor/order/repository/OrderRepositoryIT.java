@@ -2,7 +2,7 @@ package com.meteor.order.repository;
 
 import com.meteor.ContextTest;
 import com.meteor.order.domain.Order;
-import com.meteor.order.domain.OrderStatus;
+import com.meteor.order.enums.OrderStatus;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
 import org.junit.jupiter.api.Test;

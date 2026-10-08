@@ -2,6 +2,7 @@ package com.meteor.order.domain;
 
 import com.meteor.support.error.CoreException;
 import com.meteor.support.error.ErrorCode;
+import com.meteor.order.enums.OrderStatus;
 
 /**
  * 회원 한 명이 결제 대기(CREATED) 주문을 몇 건까지 가질 수 있는지 정한다.

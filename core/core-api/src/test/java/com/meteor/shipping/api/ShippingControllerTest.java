@@ -3,7 +3,7 @@ package com.meteor.shipping.api;
 import com.meteor.shared.Address;
 import com.meteor.shipping.domain.Shipping;
 import com.meteor.shipping.application.ShippingUseCase;
-import com.meteor.shipping.domain.ShippingStatus;
+import com.meteor.shipping.enums.ShippingStatus;
 import com.meteor.support.web.ApiControllerAdvice;
 import com.meteor.test.api.RestDocsTest;
 import org.junit.jupiter.api.BeforeEach;

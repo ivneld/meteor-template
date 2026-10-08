@@ -8,7 +8,7 @@ import com.meteor.order.application.OrderPlaceCommand;
 import com.meteor.order.application.OrderUseCase;
 import com.meteor.payment.application.PaymentPayCommand;
 import com.meteor.payment.application.PaymentUseCase;
-import com.meteor.payment.domain.PaymentMethod;
+import com.meteor.payment.enums.PaymentMethod;
 import com.meteor.shared.Address;
 import com.meteor.shared.Money;
 import com.meteor.support.error.CoreException;

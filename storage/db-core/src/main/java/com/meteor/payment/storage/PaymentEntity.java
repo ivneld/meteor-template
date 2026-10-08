@@ -1,8 +1,11 @@
 package com.meteor.payment.storage;
 
+import com.meteor.payment.enums.PaymentMethod;
 import com.meteor.support.storage.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 @Entity
@@ -15,13 +18,14 @@ public class PaymentEntity extends BaseEntity {
     @Column(nullable = false)
     private long amount;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String method;
+    private PaymentMethod method;
 
     protected PaymentEntity() {
     }
 
-    public PaymentEntity(Long orderId, long amount, String method) {
+    public PaymentEntity(Long orderId, long amount, PaymentMethod method) {
         this.orderId = orderId;
         this.amount = amount;
         this.method = method;
@@ -35,7 +39,7 @@ public class PaymentEntity extends BaseEntity {
         return amount;
     }
 
-    public String getMethod() {
+    public PaymentMethod getMethod() {
         return method;
     }
 

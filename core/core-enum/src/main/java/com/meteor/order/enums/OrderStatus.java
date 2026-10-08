@@ -1,4 +1,4 @@
-package com.meteor.order.domain;
+package com.meteor.order.enums;
 
 public enum OrderStatus {
 

@@ -5,6 +5,7 @@ bootJar.enabled = true
 jar.enabled = false
 
 dependencies {
+    implementation project(':core:core-enum')
     implementation project(':storage:db-core')
     implementation project(':clients:client-example')
     implementation project(':support:logging')
