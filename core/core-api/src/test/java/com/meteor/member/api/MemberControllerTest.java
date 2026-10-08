@@ -1,10 +1,7 @@
 package com.meteor.member.api;
 
 import com.meteor.member.api.request.MemberRegisterRequest;
-import com.meteor.member.domain.Member;
 import com.meteor.member.application.MemberUseCase;
-import com.meteor.member.domain.Email;
-import com.meteor.member.domain.MemberStatus;
 import com.meteor.support.web.ApiControllerAdvice;
 import com.meteor.test.api.RestDocsTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,8 +38,7 @@ class MemberControllerTest extends RestDocsTest {
 
     @Test
     void register() throws Exception {
-        when(memberUseCase.register(any()))
-            .thenReturn(Member.restore(1L, Email.of("kim@example.com"), "kim", MemberStatus.ACTIVE));
+        when(memberUseCase.register(any())).thenReturn(1L);
 
         mockMvc
             .perform(post("/api/v1/members").contentType(MediaType.APPLICATION_JSON)
@@ -51,10 +47,7 @@ class MemberControllerTest extends RestDocsTest {
             .andDo(document("member-register", preprocessRequest(prettyPrint()), preprocessResponse(prettyPrint()),
                     requestFields(fieldWithPath("email").type(JsonFieldType.STRING).description("이메일"),
                             fieldWithPath("name").type(JsonFieldType.STRING).description("이름")),
-                    responseFields(fieldWithPath("id").type(JsonFieldType.NUMBER).description("회원 ID"),
-                            fieldWithPath("email").type(JsonFieldType.STRING).description("이메일"),
-                            fieldWithPath("name").type(JsonFieldType.STRING).description("이름"),
-                            fieldWithPath("status").type(JsonFieldType.STRING).description("회원 상태"))));
+                    responseFields(fieldWithPath("id").type(JsonFieldType.NUMBER).description("회원 ID"))));
     }
 
     @Test

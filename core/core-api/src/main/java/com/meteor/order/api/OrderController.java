@@ -1,6 +1,7 @@
 package com.meteor.order.api;
 
 import com.meteor.order.api.request.OrderPlaceRequest;
+import com.meteor.order.api.response.OrderPlacedResponse;
 import com.meteor.order.api.response.OrderResponse;
 import com.meteor.order.application.OrderUseCase;
 import jakarta.validation.Valid;
@@ -23,8 +24,8 @@ public class OrderController {
     }
 
     @PostMapping
-    public OrderResponse place(@RequestBody @Valid OrderPlaceRequest request) {
-        return OrderResponse.from(orderUseCase.place(request.toCommand()));
+    public OrderPlacedResponse place(@RequestBody @Valid OrderPlaceRequest request) {
+        return OrderPlacedResponse.from(orderUseCase.place(request.toCommand()));
     }
 
     @GetMapping("/{orderId}")

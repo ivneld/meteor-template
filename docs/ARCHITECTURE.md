@@ -83,7 +83,8 @@ enum 을 제외한 도메인 타입을 두지 않는다(R-11).
 유스케이스의 반환 타입은 상황에 맞게 고른다. 애그리거트와 값 객체가 JPA 와 분리되어 있는 이유 중 하나가 그것들을 결과로 **그대로 쓸 수 있게**
 하기 위해서이므로, 조회·생성처럼 애그리거트 하나를 돌려주면 충분한 경우에는 전용 모델을 만들지 않는다. 여러 애그리거트를 합치거나 일부만
 노출하거나 계산 결과를 담아야 하면 application 에 `*Result`(명령 결과)나 `*View`(조회 모델)를 둔다. 식별자 하나, 건수, 가능 여부처럼
-단순한 값은 원시 타입이나 자바 기본 객체로 돌려준다. 레퍼런스 코드는 첫 번째 경우(애그리거트 반환)다.
+단순한 값은 원시 타입이나 자바 기본 객체로 돌려준다. 레퍼런스에 세 경우가 모두 있다. `OrderUseCase.find`(애그리거트),
+`OrderUseCase.place` → `OrderPlacementResult`(애그리거트 + Policy 계산 결과), `MemberUseCase.register` → `Long`(식별자).
 
 ### 패키지 규약
 
@@ -194,7 +195,7 @@ S-05, S-06, S-07, S-10 을 상황별로 묶으면 다음과 같다. 레퍼런스
 | 상대에게 즉시 답을 받아야 한다 | 상대의 `*Facade` (판단 반환) | 호출자의 트랜잭션 | `MemberFacade.ensureActive()`, `OrderFacade.payableAmount()` |
 | 내 변경과 상대의 변경이 함께 성공·실패해야 한다 | `*Event` + `@EventListener` (동기) | **같은 트랜잭션**. 상대 실패 시 함께 롤백 | `PaymentCompletedEvent → OrderEventListener` |
 | 내 변경이 확정된 뒤의 부가 처리다. 실패해도 내 변경은 유효하다 | `*Event` + `@TransactionalEventListener` (커밋 후) | 리스너가 `REQUIRES_NEW` 로 새 트랜잭션. 실패는 로그·점검으로 감지 | `OrderPaidEvent → ShippingEventListener` |
-| 여러 컨텍스트의 데이터를 한 화면에 보여준다 | `query` 컨텍스트 (`com.meteor.query.application.*Query`) | 읽기 전용 | 필요할 때 만든다. 다른 컨텍스트의 클래스를 참조하지 않고 SQL 로만 읽으므로 R-07 이 그대로 적용된다 |
+| 여러 컨텍스트의 데이터를 한 화면에 보여준다 | `query` 컨텍스트 (`com.meteor.query.application.*Query` → `*View`) | 읽기 전용 | `OrderDetailQuery`. 다른 컨텍스트의 클래스를 참조하지 않고 SQL 로만 읽으므로 R-07 이 그대로 적용된다. View 는 원시 타입·문자열뿐이라 api 가 그대로 응답한다 |
 
 같은 트랜잭션으로 묶인 리스너(두 번째 줄)는 [측정](#측정) 항목으로 센다. 이 흐름을 다른 애플리케이션과 나눠야 하는 날이 오면 이 목록이
 그대로 비동기·보상 처리로 바꿀 대상이자 그 비용의 추정치가 된다.
@@ -265,7 +266,8 @@ VO 는 외부 의존이 없으므로 생성자의 검증 실패는 `IllegalArgum
 
 `member`, `order`, `payment`, `shipping` 네 컨텍스트가 레퍼런스다. 판단을 돌려주는 Facade 는 `MemberFacade.ensureActive()`,
 `OrderFacade.payableAmount()`, 여러 애그리거트에 걸친 규칙은 `OrderLimitPolicy`, 같은 트랜잭션 협력은
-`PaymentCompletedEvent → OrderEventListener`, 커밋 후 부가 처리는 `OrderPaidEvent → ShippingEventListener` 를 본보기로 삼는다.
+`PaymentCompletedEvent → OrderEventListener`, 커밋 후 부가 처리는 `OrderPaidEvent → ShippingEventListener`, 컨텍스트를 가로지르는
+읽기 전용 화면은 `query` 컨텍스트의 `OrderDetailQuery` 를 본보기로 삼는다.
 사람은 문서보다 옆 패키지를 복사하므로, 레퍼런스가 규칙을 어기지 않게 유지하는 것이 가장 강한 강제 수단이다.
 
 경계를 어디에 그을지는 [컨텍스트 식별](#컨텍스트-식별) 절의 테스트로 정하고, 같은 절의 "잘못 나누었다는 신호"로 분기마다 점검한다.

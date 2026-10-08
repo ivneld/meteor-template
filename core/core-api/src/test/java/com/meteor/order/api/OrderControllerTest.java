@@ -2,6 +2,7 @@ package com.meteor.order.api;
 
 import com.meteor.order.api.request.OrderPlaceRequest;
 import com.meteor.order.domain.Order;
+import com.meteor.order.application.OrderPlacementResult;
 import com.meteor.order.application.OrderUseCase;
 import com.meteor.order.domain.OrderStatus;
 import com.meteor.shared.Address;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.restdocs.payload.ResponseFieldsSnippet;
 
@@ -51,7 +53,7 @@ class OrderControllerTest extends RestDocsTest {
 
     @Test
     void place() throws Exception {
-        when(orderUseCase.place(any())).thenReturn(result(OrderStatus.CREATED));
+        when(orderUseCase.place(any())).thenReturn(new OrderPlacementResult(result(OrderStatus.CREATED), 2));
 
         OrderPlaceRequest request = new OrderPlaceRequest(1L, "keyboard", 2, 50_000,
                 new OrderPlaceRequest.AddressRequest("Seoul", "Teheran-ro 1", "06000"));
@@ -66,7 +68,8 @@ class OrderControllerTest extends RestDocsTest {
                             fieldWithPath("shippingAddress.city").type(JsonFieldType.STRING).description("시"),
                             fieldWithPath("shippingAddress.street").type(JsonFieldType.STRING).description("도로명"),
                             fieldWithPath("shippingAddress.zipCode").type(JsonFieldType.STRING).description("우편번호")),
-                    orderResponseFields()));
+                    responseFields(fieldWithPath("remainingAwaitingPaymentOrders").type(JsonFieldType.NUMBER)
+                        .description("이 회원이 더 넣을 수 있는 결제 대기 주문 수")).andWithPrefix("order.", orderFields())));
     }
 
     @Test
@@ -102,7 +105,11 @@ class OrderControllerTest extends RestDocsTest {
     }
 
     private static ResponseFieldsSnippet orderResponseFields() {
-        return responseFields(fieldWithPath("id").type(JsonFieldType.NUMBER).description("주문 ID"),
+        return responseFields(orderFields());
+    }
+
+    private static FieldDescriptor[] orderFields() {
+        return new FieldDescriptor[] { fieldWithPath("id").type(JsonFieldType.NUMBER).description("주문 ID"),
                 fieldWithPath("memberId").type(JsonFieldType.NUMBER).description("회원 ID"),
                 fieldWithPath("productName").type(JsonFieldType.STRING).description("상품명"),
                 fieldWithPath("quantity").type(JsonFieldType.NUMBER).description("수량"),
@@ -111,7 +118,7 @@ class OrderControllerTest extends RestDocsTest {
                 fieldWithPath("shippingAddress.city").type(JsonFieldType.STRING).description("시"),
                 fieldWithPath("shippingAddress.street").type(JsonFieldType.STRING).description("도로명"),
                 fieldWithPath("shippingAddress.zipCode").type(JsonFieldType.STRING).description("우편번호"),
-                fieldWithPath("status").type(JsonFieldType.STRING).description("주문 상태"));
+                fieldWithPath("status").type(JsonFieldType.STRING).description("주문 상태") };
     }
 
     private static String json(Object body) {

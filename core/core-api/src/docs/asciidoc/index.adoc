@@ -43,7 +43,7 @@ include::{snippets}/member-register-invalid-email/response-fields.adoc[]
 
 == 회원 API
 
-=== 회원 가입
+=== 회원 가입 (응답은 식별자만)
 include::{snippets}/member-register/curl-request.adoc[]
 include::{snippets}/member-register/request-fields.adoc[]
 include::{snippets}/member-register/http-response.adoc[]
@@ -51,7 +51,7 @@ include::{snippets}/member-register/response-fields.adoc[]
 
 == 주문 API
 
-=== 주문 생성
+=== 주문 생성 (주문 + 남은 결제 대기 주문 수)
 include::{snippets}/order-place/curl-request.adoc[]
 include::{snippets}/order-place/request-fields.adoc[]
 include::{snippets}/order-place/http-response.adoc[]
@@ -80,3 +80,13 @@ include::{snippets}/shipping-ship/curl-request.adoc[]
 include::{snippets}/shipping-ship/path-parameters.adoc[]
 include::{snippets}/shipping-ship/http-response.adoc[]
 include::{snippets}/shipping-ship/response-fields.adoc[]
+
+== 조회 API (query 컨텍스트)
+
+여러 컨텍스트의 테이블을 읽기 전용 SQL 로 묶어 한 화면용 모델을 돌려준다.
+
+=== 주문 상세
+include::{snippets}/query-order-detail/curl-request.adoc[]
+include::{snippets}/query-order-detail/path-parameters.adoc[]
+include::{snippets}/query-order-detail/http-response.adoc[]
+include::{snippets}/query-order-detail/response-fields.adoc[]

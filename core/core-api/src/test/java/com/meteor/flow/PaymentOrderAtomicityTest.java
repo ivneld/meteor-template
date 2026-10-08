@@ -53,11 +53,11 @@ class PaymentOrderAtomicityTest extends ContextTest {
 
     @Test
     void failureAfterOrderPaidRollsBackPaymentToo() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("atomic@example.com"), "kim"))
-            .getId();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("atomic@example.com"), "kim"));
         Long orderId = orderUseCase
             .place(new OrderPlaceCommand(memberId, "keyboard", 1, Money.of(10_000),
                     new Address("Seoul", "Teheran-ro 1", "06000")))
+            .order()
             .getId();
 
         assertThatThrownBy(() -> paymentUseCase.pay(new PaymentPayCommand(orderId, PaymentMethod.CARD)))

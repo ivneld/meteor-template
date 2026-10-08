@@ -1,6 +1,7 @@
 package com.meteor.member.api;
 
 import com.meteor.member.api.request.MemberRegisterRequest;
+import com.meteor.member.api.response.MemberRegisteredResponse;
 import com.meteor.member.api.response.MemberResponse;
 import com.meteor.member.application.MemberUseCase;
 import jakarta.validation.Valid;
@@ -23,8 +24,8 @@ public class MemberController {
     }
 
     @PostMapping
-    public MemberResponse register(@RequestBody @Valid MemberRegisterRequest request) {
-        return MemberResponse.from(memberUseCase.register(request.toCommand()));
+    public MemberRegisteredResponse register(@RequestBody @Valid MemberRegisterRequest request) {
+        return new MemberRegisteredResponse(memberUseCase.register(request.toCommand()));
     }
 
     @GetMapping("/{memberId}")

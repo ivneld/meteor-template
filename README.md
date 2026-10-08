@@ -77,6 +77,10 @@ core-api/src/main/java/com/meteor/order
 | `order` | `Order` | 수량 1 이상, CREATED 일 때만 결제·취소 가능. 회원당 결제 대기 주문은 3건까지(`OrderLimitPolicy`) | 회원을 `MemberFacade` 로 확인, `OrderFacade.payableAmount()` 공개, 결제 완료 이벤트를 결제 트랜잭션 안에서 받아 PAID, `OrderPaidEvent` 발행 |
 | `payment` | `Payment` | 승인 금액은 0 보다 커야 함 | 금액을 `OrderFacade` 에 묻고 `PaymentCompletedEvent` 발행 |
 | `shipping` | `Shipping` | READY → SHIPPED → DELIVERED | `OrderPaidEvent` 를 커밋 이후에 받아 배송 생성 |
+| `query` | 없음 (읽기 전용) | 없음 | 네 컨텍스트의 테이블을 SQL 로만 JOIN 해 `OrderDetailView` 를 돌려줌. 다른 컨텍스트의 클래스는 참조하지 않음 |
+
+유스케이스의 반환 타입 세 가지도 레퍼런스에 있다. 조회·상태 전이는 애그리거트 그대로(`OrderUseCase.find`), 애그리거트와 계산 결과를
+함께 돌려줄 때는 전용 모델(`OrderUseCase.place` → `OrderPlacementResult`), 식별자만 필요하면 원시 타입(`MemberUseCase.register` → `Long`).
 
 값 타입은 소유자가 정한다. 컨텍스트 사이 계약에 실리는 `Money`, `Address` 만 `shared` 에 있고, `Email`, `PaymentMethod`, 상태 enum 은
 각 컨텍스트의 `domain` 에 있다. 각 컨텍스트는 다른 컨텍스트를 ID(`memberId`, `orderId`)로만 안다.
@@ -103,6 +107,7 @@ curl -X POST localhost:8080/api/v1/payments -H "$H" -d '{"orderId":1,"method":"C
 curl localhost:8080/api/v1/orders/1                 # status: PAID (이벤트로 전이)
 curl 'localhost:8080/api/v1/shippings?orderId=1'    # status: READY (이벤트로 생성)
 curl -X POST localhost:8080/api/v1/shippings/1/ship
+curl localhost:8080/api/v1/query/orders/1                # 네 컨텍스트를 묶은 읽기 모델
 ```
 
 ```bash

@@ -30,14 +30,16 @@ public class OrderUseCase {
         this.eventPublisher = eventPublisher;
     }
 
+    /** 애그리거트와 Policy 의 계산 결과를 함께 돌려줘야 하므로 전용 결과 모델을 쓴다. */
     @Transactional
-    public Order place(OrderPlaceCommand command) {
+    public OrderPlacementResult place(OrderPlaceCommand command) {
         memberFacade.ensureActive(command.memberId());
-        OrderLimitPolicy.ensureCanPlace(command.memberId(),
-                orderRepository.countByMemberIdAndStatus(command.memberId(), OrderLimitPolicy.COUNTED_STATUS));
+        long awaiting = orderRepository.countByMemberIdAndStatus(command.memberId(), OrderLimitPolicy.COUNTED_STATUS);
+        OrderLimitPolicy.ensureCanPlace(command.memberId(), awaiting);
         Order order = Order.place(command.memberId(), command.productName(), command.quantity(), command.unitPrice(),
                 command.shippingAddress());
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        return new OrderPlacementResult(saved, OrderLimitPolicy.remainingSlots(awaiting + 1));
     }
 
     @Transactional(readOnly = true)

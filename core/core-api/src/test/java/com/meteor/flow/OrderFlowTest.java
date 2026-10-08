@@ -56,9 +56,10 @@ class OrderFlowTest extends ContextTest {
 
     @Test
     void paymentDrivesOrderAndShippingThroughEvents() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("flow@example.com"), "kim")).getId();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("flow@example.com"), "kim"));
         Address address = new Address("Seoul", "Teheran-ro 1", "06000");
-        Order order = orderUseCase.place(new OrderPlaceCommand(memberId, "keyboard", 2, Money.of(50_000), address));
+        Order order = orderUseCase.place(new OrderPlaceCommand(memberId, "keyboard", 2, Money.of(50_000), address))
+            .order();
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
 
         Payment payment = paymentUseCase.pay(new PaymentPayCommand(order.getId(), PaymentMethod.CARD));
@@ -76,9 +77,11 @@ class OrderFlowTest extends ContextTest {
 
     @Test
     void paidOrderCannotBePaidAgain() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("twice@example.com"), "kim")).getId();
-        Order order = orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000),
-                new Address("Seoul", "Teheran-ro 1", "06000")));
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("twice@example.com"), "kim"));
+        Order order = orderUseCase
+            .place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000),
+                    new Address("Seoul", "Teheran-ro 1", "06000")))
+            .order();
         paymentUseCase.pay(new PaymentPayCommand(order.getId(), PaymentMethod.CARD));
 
         assertThatThrownBy(() -> paymentUseCase.pay(new PaymentPayCommand(order.getId(), PaymentMethod.CARD)))
@@ -88,7 +91,7 @@ class OrderFlowTest extends ContextTest {
 
     @Test
     void memberCannotHoldMoreAwaitingPaymentOrdersThanTheLimit() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("limit@example.com"), "kim")).getId();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("limit@example.com"), "kim"));
         Address address = new Address("Seoul", "Teheran-ro 1", "06000");
         for (int i = 0; i < OrderLimitPolicy.MAX_AWAITING_PAYMENT; i++) {
             orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000), address));
@@ -102,7 +105,7 @@ class OrderFlowTest extends ContextTest {
 
     @Test
     void withdrawnMemberCannotOrder() {
-        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("gone@example.com"), "kim")).getId();
+        Long memberId = memberUseCase.register(new MemberRegisterCommand(Email.of("gone@example.com"), "kim"));
         memberUseCase.withdraw(memberId);
 
         assertThatThrownBy(() -> orderUseCase.place(new OrderPlaceCommand(memberId, "mouse", 1, Money.of(10_000),

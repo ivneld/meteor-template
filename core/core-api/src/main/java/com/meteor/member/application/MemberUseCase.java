@@ -20,9 +20,10 @@ public class MemberUseCase {
         this.memberRepository = memberRepository;
     }
 
+    /** 생성 결과로 필요한 것이 식별자뿐이면 애그리거트 대신 식별자만 돌려준다. */
     @Transactional
-    public Member register(MemberRegisterCommand command) {
-        return memberRepository.save(Member.register(command.email(), command.name()));
+    public Long register(MemberRegisterCommand command) {
+        return memberRepository.save(Member.register(command.email(), command.name())).getId();
     }
 
     @Transactional(readOnly = true)

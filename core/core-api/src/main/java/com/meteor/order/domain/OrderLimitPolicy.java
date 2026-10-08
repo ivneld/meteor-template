@@ -22,6 +22,11 @@ public final class OrderLimitPolicy {
     private OrderLimitPolicy() {
     }
 
+    /** 지금 결제 대기 건수가 주어졌을 때 앞으로 더 넣을 수 있는 주문 수. */
+    public static long remainingSlots(long awaitingPaymentOrders) {
+        return Math.max(0, MAX_AWAITING_PAYMENT - awaitingPaymentOrders);
+    }
+
     public static void ensureCanPlace(Long memberId, long awaitingPaymentOrders) {
         if (awaitingPaymentOrders >= MAX_AWAITING_PAYMENT) {
             throw new CoreException(ErrorCode.ORDER_LIMIT_EXCEEDED).property("memberId", memberId)
