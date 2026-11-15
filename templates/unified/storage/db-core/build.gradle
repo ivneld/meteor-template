@@ -1,0 +1,7 @@
+// 저장소 인프라 모듈. DataSource, JPA 설정, 모든 엔티티가 상속하는 BaseEntity(com.meteor.support.storage).
+// 엔티티와 Spring Data 인터페이스는 없다. 애그리거트가 곧 엔티티라 core-api 의 com.meteor.domain 에 있다.
+dependencies {
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.h2database:h2'
+}

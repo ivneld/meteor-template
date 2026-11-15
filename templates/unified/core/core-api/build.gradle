@@ -1,0 +1,19 @@
+// 프로젝트에서 유일하게 실행 가능한 모듈. domain / usecase / api 세 계층 패키지가 이 안에 있다.
+// 애그리거트가 곧 JPA 엔티티이고 *Repository 는 Spring Data 인터페이스다. 둘 다 domain 에 있다.
+// 계층 사이의 경계는 ArchitectureRules(ArchUnit)가 강제한다.
+bootJar.enabled = true
+jar.enabled = false
+
+dependencies {
+    implementation project(':core:core-enum')
+    implementation project(':storage:db-core')
+    implementation project(':clients:client-pg')
+    implementation project(':support:logging')
+    implementation project(':support:monitoring')
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    testImplementation project(':tests:api-docs')
+    testImplementation "com.tngtech.archunit:archunit-junit5:${property('archUnitVersion')}"
+}

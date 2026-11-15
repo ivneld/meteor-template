@@ -1,0 +1,19 @@
+diff --git a/a/core/core-api/src/main/java/com/meteor/usecase/PaymentUseCase.java b/b/core/core-api/src/main/java/com/meteor/usecase/PaymentUseCase.java
+index e26ab19..4c1d2a7 100644
+--- a/a/core/core-api/src/main/java/com/meteor/usecase/PaymentUseCase.java
++++ b/b/core/core-api/src/main/java/com/meteor/usecase/PaymentUseCase.java
+@@ -69,11 +69,9 @@ public class PaymentUseCase {
+             throw failure;
+         }
+ 
+-        return transaction.execute(status -> {
+-            Payment approved = paymentWriter.approve(requested.getId(), approval.transactionKey());
+-            orderWriter.markPaid(command.orderId());
+-            return approved;
+-        });
++        Payment approved = paymentWriter.approve(requested.getId(), approval.transactionKey());
++        orderWriter.markPaid(command.orderId());
++        return approved;
+     }
+ 
+ }

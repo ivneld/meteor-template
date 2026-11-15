@@ -1,0 +1,28 @@
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version "${springBootVersion}"
+        id 'io.spring.dependency-management' version "${springDependencyManagementVersion}"
+        id 'org.asciidoctor.jvm.convert' version "${asciidoctorConvertVersion}"
+        id 'io.spring.javaformat' version "${springJavaFormatVersion}"
+    }
+}
+
+rootProject.name = 'meteor-template'
+
+// core: 도메인 enum 모듈(com.meteor.enums)과 유일한 실행 모듈. core-api 는 domain / usecase / api 세 계층이고,
+// 애그리거트가 곧 JPA 엔티티라 domain 에 엔티티와 Spring Data 인터페이스가 함께 있다
+include 'core:core-enum'
+include 'core:core-api'
+
+// storage: 저장소 인프라(DataSource, JPA 설정, BaseEntity). 엔티티는 없다
+include 'storage:db-core'
+
+// clients: 외부 시스템 연동 어댑터
+include 'clients:client-pg'
+
+// support: 공통 부가 기능
+include 'support:logging'
+include 'support:monitoring'
+
+// tests: 테스트 작성 편의
+include 'tests:api-docs'

@@ -1,0 +1,171 @@
+# meteor-template (통합형)
+
+Spring Boot(Java) 애플리케이션을 팀이 함께 시작하기 위한 템플릿 가운데 **통합형**이다. 애그리거트가 곧 JPA 엔티티라 매핑 계층 없이
+시작한다. 요구사항이 운영하면서 드러나는 B2C 서비스나 PoC 에 맞고, 나중에 분리할 수 있는 상태를 규칙으로 지킨다. 고르는 기준과 분리형으로
+옮길 신호는 [설계 배경](docs/architecture/background.md#이-템플릿을-고르는-상황).
+
+목표는 단순한 구조로 시작하되 **규칙은 도메인 모델 한 곳에 모으고**, **트랜잭션 경계가 코드에서 보이게** 하는 것이다. 코드는 `domain`,
+`usecase`, `api` 세 계층으로만 나눈다.
+
+- 규칙은 애그리거트와 `*Policy`(도메인 모델)에 있다. 애그리거트는 JPA 매핑 어노테이션을 갖지만 Spring 은 모른다.
+- 애그리거트끼리는 ID 로만 참조하고 연관관계를 걸지 않는다. setter 없이 규칙을 가진 메서드로만 상태를 바꾸고, 바꾸면 save 를 명시한다.
+- 저장소 호출은 애그리거트 하나를 맡는 도메인 서비스 `*Reader`(조회)와 `*Writer`(생성·변경)에 모은다. `*Service` 접미어는 쓰지 않는다.
+- 여러 도메인 서비스를 엮거나 외부 시스템을 부르거나 트랜잭션을 나눠야 할 때만 `*UseCase` 를 만든다.
+- 트랜잭션은 도메인 서비스(기본 전파)와 usecase 에서 선언한다. 경계 조절은 usecase 만 한다.
+- 구조 규칙(R-xx)은 ArchUnit 이, 의미 규칙(S-xx)은 리뷰 에이전트가 강제한다.
+
+## 모듈 구성
+
+```
+meteor-template
+├── core
+│   ├── core-enum       com.meteor.enums. 모든 도메인 enum. 의존 0
+│   └── core-api        유일한 실행 모듈. com.meteor.domain / usecase / api
+│                       + support(에러 어휘, 웹 설정, 어드바이스). 애그리거트(엔티티)와 *Repository(Spring Data)가 domain 에 있다
+├── storage
+│   └── db-core         저장소 인프라(DataSource, JPA 설정, BaseEntity). 엔티티는 없다
+├── clients
+│   └── client-pg       OpenFeign 기반 PG 연동 어댑터 예시. local 프로필은 PG 없이 승인한다
+├── support
+│   ├── logging         프로필별 logback, OpenTelemetry, Sentry
+│   └── monitoring      Actuator + Prometheus
+├── tests
+│   └── api-docs        Spring REST Docs 테스트 베이스
+├── docs                사람이 읽는 문서
+├── harness             AI 에이전트가 읽는 배경·구조·규칙·플레이북과 리뷰 하네스
+└── AGENTS.md           AI 에이전트의 진입점 (CLAUDE.md 가 가져온다)
+```
+
+### 계층
+
+```
+com.meteor
+├── enums       MemberStatus, OrderStatus, PaymentMethod, PaymentStatus                         (core-enum)
+├── domain      Member, Order, Payment                       애그리거트(@Entity) ← 규칙은 여기에만
+│               Money, Address, Email                        값 객체(@Embeddable record)
+│               OrderLimitPolicy                             여러 애그리거트에 걸친 순수 규칙
+│               MemberReader, OrderReader, PaymentReader     조회 도메인 서비스 (readOnly 트랜잭션)
+│               MemberWriter, OrderWriter, PaymentWriter     생성·변경 도메인 서비스 (트랜잭션)
+│               MemberRepository, OrderRepository, ...       Spring Data 인터페이스
+├── usecase     OrderUseCase, PaymentUseCase, *Command       여러 도메인 서비스를 엮는 흐름, 트랜잭션 경계 조절
+├── api         *Controller, request/, response/
+└── support.storage  BaseEntity, DataSource·JPA 설정                                                 (storage/db-core)
+```
+
+```
+ api ──────────► usecase ──────────► domain  (애그리거트 = 엔티티, *Repository = Spring Data)
+  │                 │                  ▲
+  │                 └──► clients       │
+  └────────────────────────────────────┘
+     (애그리거트 하나로 끝나는 흐름은 api 가 *Reader / *Writer 를 바로 부른다)
+```
+
+`*Repository` 는 `JpaRepository` 를 상속한 인터페이스이고 `*Reader` / `*Writer` 만 부른다. 영속화 기술은 JPA 로 고정이라 그 위에
+별도 인터페이스를 두지 않는다. 애그리거트 하나가 [분리형으로 옮길 신호](docs/architecture/background.md#분리형으로-옮길-신호)를 보이면 그
+애그리거트를 분리형 구조로 옮긴다([구조 확장](docs/scaling.md#분리형으로-옮기기)).
+
+## 레퍼런스 도메인
+
+구조를 보여주기 위한 최소한의 주문·결제 흐름. 세 가지 호출 모양이 모두 들어 있다.
+
+| 흐름 | 호출 | 트랜잭션 |
+|---|---|---|
+| 회원 가입·조회·탈퇴, 주문 조회·취소, 결제 조회 | api → `*Reader` / `*Writer` | 도메인 서비스가 연 트랜잭션 하나 |
+| 주문 생성 | api → `OrderUseCase.place` → `MemberReader.ensureActive` + `OrderWriter.place` | usecase 의 `@Transactional` 하나에 두 서비스가 참여 |
+| 결제 | api → `PaymentUseCase.pay` → `OrderReader`, `PaymentWriter`, `PgClient`, `OrderWriter` | `TransactionTemplate` 으로 둘로 나눔. PG 호출은 트랜잭션 밖 |
+
+```
+PaymentUseCase.pay
+  트랜잭션 1   OrderReader.payableAmount → PaymentWriter.request         결제 REQUESTED
+  트랜잭션 밖  PgClient.approve                                          실패 시 PaymentWriter.fail → FAILED
+  트랜잭션 2   PaymentWriter.approve + OrderWriter.markPaid              결제 APPROVED, 주문 PAID (함께 커밋·롤백)
+```
+
+| 애그리거트 | 규칙 |
+|---|---|
+| `Member` | 탈퇴는 한 번만. 활성 회원만 주문할 수 있음 |
+| `Order` | 수량 1 이상, CREATED 일 때만 결제·취소 가능. 회원당 결제 대기 주문은 3건까지(`OrderLimitPolicy`) |
+| `Payment` | 금액은 0 보다 커야 함. REQUESTED 일 때만 승인·실패 처리 가능 |
+
+애그리거트끼리는 ID(`memberId`, `orderId`)로만 참조한다. 주문 생성은 `OrderUseCaseIT`, 결제 흐름은 `PaymentUseCaseIT`, 나눈 트랜잭션의
+경계(PG 실패 시 FAILED, 승인 뒤 실패 시 REQUESTED 유지)는 `PaymentTransactionBoundaryIT` 가 검증한다.
+
+## 실행
+
+```bash
+./gradlew :core:core-api:bootRun
+H='Content-Type: application/json'
+curl -X POST localhost:8080/api/v1/members  -H "$H" -d '{"email":"kim@example.com","name":"kim"}'
+curl -X POST localhost:8080/api/v1/orders   -H "$H" -d '{"memberId":1,"productName":"keyboard","quantity":2,"unitPrice":50000,"shippingAddress":{"city":"Seoul","street":"Teheran-ro 1","zipCode":"06000"}}'
+curl -X POST localhost:8080/api/v1/payments -H "$H" -d '{"orderId":1,"method":"CARD"}'   # local 프로필은 PG 없이 승인
+curl localhost:8080/api/v1/orders/1                 # status: PAID
+curl localhost:8080/api/v1/payments/1               # status: APPROVED
+```
+
+```bash
+./gradlew test                       # CI 기본. ArchUnit 포함
+./gradlew :core:core-api:asciidoctor # REST Docs HTML 생성 (restDocsTest 선행)
+./gradlew checkFormat                # 코드 포맷 검사
+./gradlew format                     # 코드 포맷 적용
+```
+
+## 코드리뷰 요청 전
+
+```bash
+npm i -g @earendil-works/pi-coding-agent   # 최초 1회
+cp .env.example .env                        # 모델(ARCH_REVIEW_MODEL)과 토큰(ANTHROPIC_API_KEY 등) 입력. .env 는 커밋되지 않는다
+pi                                          # 저장소 루트에서 실행해 프로젝트를 신뢰(/trust)한 뒤, 프롬프트에 /arch-review
+pi --approve -p --no-session "/arch-review" < /dev/null   # 비대화형. 종료 코드 0 PASS / 1 BLOCK / 2 WARN
+```
+
+ArchUnit 이 구조 규칙을, 리뷰 에이전트가 의미 규칙을 본다. BLOCK 이면 고치거나 ADR 로 예외를 남긴 뒤 리뷰를 요청한다. 푸시마다 자동으로
+돌리려면 `git config core.hooksPath .githooks`. 설정과 사용법은 [리뷰 에이전트](docs/review-agent.md).
+
+## AI 와 함께 개발할 때
+
+AI 에이전트의 진입점은 `AGENTS.md` 다. 작업 절차, 코드 위치 결정, 규칙 인덱스가 있고, 상세는 `harness/` 의 설계 배경(`context/`), 규칙별
+파일(`rules/`), 작업 플레이북(`playbooks/`)으로 이어진다. 사람용 문서(`docs/`)와 같은 규칙 ID 를 쓰지만 에이전트가 필요한 규칙만 골라
+읽도록 규칙마다 파일이 나뉘어 있다. Claude Code 는 `CLAUDE.md` 를 통해 `AGENTS.md` 를 읽고, 파일을 고칠 때 `.claude/rules/` 의 경로별
+규칙이 자동으로 붙는다.
+
+## 의존성 버전 관리
+
+모든 버전은 `gradle.properties` 에서 관리한다. 새 라이브러리를 추가할 때는 버전을 `gradle.properties` 에 적고 `build.gradle` 에서 참조한다.
+
+## 런타임 프로필
+
+| 프로필 | 용도 |
+|---|---|
+| `local` | 네트워크 없이 개발. H2 인메모리 DB, DDL auto create |
+| `local-dev` | 로컬에서 dev 환경 자원(DB 등)에 접속 |
+| `dev` | 개발 서버 배포 |
+| `staging` | 스테이징 서버 배포 |
+| `live` | 운영 서버 배포 |
+
+로그 설정은 `support/logging/src/main/resources/logback/logback-{profile}.xml` 로 프로필마다 분리된다.
+
+## 테스트 태스크와 태그
+
+| 태스크 | 포함 태그 | 설명 |
+|---|---|---|
+| `test` | develop, restdocs 제외 | CI 에서 실행하는 기본 묶음. ArchUnit 규칙 포함 |
+| `unitTest` | 태그 없음 | 외부 의존 없는 빠른 단위 테스트 (도메인 모델, ArchUnit) |
+| `contextTest` | `context` | Spring 컨텍스트를 올리는 통합 테스트 |
+| `restDocsTest` | `restdocs` | REST Docs 스니펫 생성 |
+| `developTest` | `develop` | CI 에서 돌리지 않는 개발용 테스트 |
+
+## 권장 IDE 설정 (IntelliJ IDEA)
+
+- `Build, Execution, Deployment > Build Tools > Gradle > Run tests using` 을 `IntelliJ IDEA` 로 설정하면 테스트 실행이 빠르다.
+- 포맷터는 [Spring Java Format](https://github.com/spring-io/spring-javaformat#intellij-idea) 플러그인을 사용한다.
+
+## 관련 문서
+
+| 문서 | 언제 보는가 |
+|---|---|
+| [docs/architecture/](docs/architecture/README.md) | 설계 배경과 원칙, 코드를 어디에 둘지, usecase 가 필요한지, 트랜잭션을 묶거나 나눌 때, 새 기능을 추가할 때 |
+| [docs/architecture/rules.md](docs/architecture/rules.md) | 규칙 ID 로 규칙과 그 이유를 찾을 때 |
+| [docs/error-handling.md](docs/error-handling.md) | 에러 코드를 추가하거나 예외를 던질 때, 오류 응답 형식을 알아야 할 때 |
+| [docs/scaling.md](docs/scaling.md) | 트래픽·코드가 커져 구조를 바꿔야 하는지, 두 번째 실행 모듈을 만들 때, 다른 앱과 연동할 때 |
+| [docs/review-agent.md](docs/review-agent.md) | 코드리뷰 요청 전 `/arch-review` 를 돌릴 때, 결과를 해석할 때 |
+| [AGENTS.md](AGENTS.md) | AI 에이전트가 이 저장소에서 작업할 때 읽는 진입점 |

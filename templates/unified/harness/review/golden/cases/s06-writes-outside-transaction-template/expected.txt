@@ -1,0 +1,1 @@
+S-06 PG 승인 뒤 결제 APPROVED 와 주문 PAID 를 TransactionTemplate 밖에서 따로 커밋해, 하나만 반영되는 상태가 생긴다

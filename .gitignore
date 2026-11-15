@@ -1,25 +1,6 @@
-### Gradle ###
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**
-!**/src/test/**
-
-### IntelliJ IDEA ###
+# 템플릿마다 자기 .gitignore 가 있다. 여기에는 저장소 루트에서만 생기는 것만 둔다.
 .idea
-*.iws
-*.iml
-*.ipr
-out/
-
-### macOS ###
 .DS_Store
-
-### Environment ###
-.envrc
-.env
-.worktrees/
-
-### AI agents ###
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 CLAUDE.local.md
